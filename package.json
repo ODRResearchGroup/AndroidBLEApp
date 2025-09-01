@@ -10,8 +10,12 @@
     "test": "jest"
   },
   "dependencies": {
+    "base-64": "^1.0.0",
     "react": "19.0.0",
-    "react-native": "0.79.2"
+    "react-native": "0.79.2",
+    "react-native-ble-plx": "^3.5.0",
+    "react-native-geolocation-service": "^5.3.1",
+    "react-native-keep-awake": "^4.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -26,6 +30,7 @@
     "@react-native/typescript-config": "0.79.2",
     "@types/jest": "^29.5.13",
     "@types/react": "^19.0.0",
+    "@types/react-native-keep-awake": "^2.0.8",
     "@types/react-test-renderer": "^19.0.0",
     "eslint": "^8.19.0",
     "jest": "^29.6.3",
