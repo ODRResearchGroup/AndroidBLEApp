@@ -32,8 +32,7 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-			<!-- Blueooth and location access for ios -->
-
+  <!-- Blueooth and location access for ios -->
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>This app uses Bluetooth to connect to nearby devices.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
