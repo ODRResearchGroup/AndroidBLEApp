@@ -17,7 +17,7 @@ export class InfluxDBClient {
     const tagString = Object.entries(tags)
       .map(([key, value]) => `${key}=${value}`)
       .join(',');
-    
+
     const fieldString = Object.entries(fields)
       .map(([key, value]) => {
         if (typeof value === 'string') {
@@ -43,7 +43,7 @@ export class InfluxDBClient {
       if (!response.ok) {
         throw new Error(`InfluxDB write failed: ${response.status} ${response.statusText}`);
       }
-      
+
       console.log('Data written to InfluxDB successfully');
     } catch (error) {
       console.error('Error writing to InfluxDB:', error);
