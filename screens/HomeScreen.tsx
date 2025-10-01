@@ -8,7 +8,7 @@ type Props = { navigation: any };
 export default function HomeScreen({ navigation }: Props) {
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Home Screen!!!</Text>
+      <Text>Home Screen</Text>
       <Button
         title="Connect Device"
         onPress={() => navigation.navigate('Device')}
