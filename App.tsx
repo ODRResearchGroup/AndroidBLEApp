@@ -7,9 +7,12 @@ import {
   SafeAreaView,
   PermissionsAndroid,
   Platform,
-  StyleSheet} from 'react-native';
+  StyleSheet,
+} from 'react-native';
 import {BleManager, Device} from 'react-native-ble-plx';
 import KeepAwake from 'react-native-keep-awake';
+import mitt from 'mitt';
+import {AppEventEmitter, BLEDataUpdated, SensorEvent} from './types';
 
 var base64 = require('base-64');
 
@@ -35,6 +38,8 @@ const styles = StyleSheet.create({
   },
 });
 
+// Create a global event emitter instance
+const eventEmitter: AppEventEmitter = mitt();
 
 const BLELoggerApp = () => {
   // Initialize BLE manager
@@ -130,41 +135,72 @@ const BLELoggerApp = () => {
   };
 
   // Subscribe to notifications for a specific characteristic of a connected device
-const enableNotifications = async (
-  device: Device,
-  serviceUUID: string,
-  characteristicUUID: string,
-) => {
-  console.log('Enabling notifications for:', serviceUUID, characteristicUUID);
-  try {
-    device.monitorCharacteristicForService(
-      serviceUUID,
-      characteristicUUID,
-      (error, characteristic) => {
-        if (error) {
-          console.error('Notification error:', error);
-          return;
-        }
-        // Build message string
-        const message =
-        //   'Notification received > raw: ' +
-        //   (characteristic?.value ?? '0') +
-        //   ', string: ' +
-        //   base64.decode(characteristic?.value ?? '0') +
-        //   ', number: ' +
-        //   base64ToDecimal(characteristic?.value ?? '0');
-        // // Log to console
-        `ch4: ` +  base64.decode(characteristic?.value ?? '0')
-        console.log(message);
+  const enableNotifications = async (
+    device: Device,
+    serviceUUID: string,
+    characteristicUUID: string,
+  ) => {
+    console.log('Enabling notifications for:', serviceUUID, characteristicUUID);
+    try {
+      device.monitorCharacteristicForService(
+        serviceUUID,
+        characteristicUUID,
+        (error, characteristic) => {
+          if (error) {
+            console.error('Notification error:', error);
+            return;
+          }
 
-        // Update UI
-        setLatestValue(message);
-      },
-    );
-  } catch (error) {
-    console.error('Enable notification error:', error);
-  }
-};
+          const decodedValue = base64.decode(characteristic?.value ?? '0');
+
+          // Emit BLE data updated event
+          const bleEvent: BLEDataUpdated = {
+            type: 'ble_data_updated',
+            timestamp: new Date(),
+            deviceId: device.id,
+            serviceUUID,
+            characteristicUUID,
+            rawValue: characteristic?.value ?? '0',
+            decodedValue,
+            source: device.name || 'Unknown Device',
+          };
+
+          eventEmitter.emit('ble_data_updated', bleEvent);
+        },
+      );
+    } catch (error) {
+      console.error('Enable notification error:', error);
+    }
+  };
+
+  // Subscribe to BLE data updates
+  useEffect(() => {
+    const handleBLEUpdate = (event: BLEDataUpdated) => {
+      /*
+      TODO Here is where SensorEvents should be created and emitted, I think.
+      Though, we might want some logic to wait for all 8 sensor readings before emitting a SensorEvent.
+      In this way, BLEDataUpdated is a lower-level event, and SensorEvent is a higher-level event
+      that aggregates multiple BLEDataUpdated events.
+      */
+
+      console.log('BLE data updated:', event);
+      setLatestValue(`${event.decodedValue || event.rawValue}`);
+    };
+
+    const handleSensorReading = (event: SensorEvent) => {
+      console.log('Sensor reading:', event);
+    };
+
+    // Subscribe to events
+    eventEmitter.on('ble_data_updated', handleBLEUpdate);
+    eventEmitter.on('sensor_reading', handleSensorReading);
+
+    // Cleanup subscriptions
+    return () => {
+      eventEmitter.off('ble_data_updated', handleBLEUpdate);
+      eventEmitter.off('sensor_reading', handleSensorReading);
+    };
+  }, []);
 
   const base64ToDecimal = (encodedString: string) => {
     // Convert base 64 encoded string to text
@@ -211,44 +247,43 @@ const enableNotifications = async (
   //     )}
   //   </View>
   // );
-return (
-  <SafeAreaView style={styles.safeArea}>
-    <KeepAwake />
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <KeepAwake />
 
-    {/* Button to start scanning for devices */}
-    <Button title="Scan for Devices" onPress={scanForDevices} />
+      {/* Button to start scanning for devices */}
+      <Button title="Scan for Devices" onPress={scanForDevices} />
 
-    {/* List of discovered devices */}
-    <FlatList
-      style={styles.container}
-      data={devices}
-      keyExtractor={item => item.id}
-      renderItem={({ item }) => (
-        <Text onPress={() => connectToDevice(item)} style={styles.item}>
-          {item.name || 'Unnamed Device'}
-        </Text>
-      )}
-    />
-
-    {/* ✅ Live BLE data display */}
-    <Text style={styles.latestValue}>{latestValue}</Text>
-
-    {/* Button to read data from the connected device */}
-    {connectedDevice && (
-      <Button
-        title="Read Data"
-        onPress={() => {
-          enableNotifications(
-            connectedDevice,
-            '0000181a-0000-1000-8000-00805f9b34fb',// Service UUID for environmental sensing (ESS)
-            '00002bd1-0000-1000-8000-00805f9b34fb',// Characteristic UUID for ch4 (methane)
-          );
-        }}
+      {/* List of discovered devices */}
+      <FlatList
+        style={styles.container}
+        data={devices}
+        keyExtractor={item => item.id}
+        renderItem={({item}) => (
+          <Text onPress={() => connectToDevice(item)} style={styles.item}>
+            {item.name || 'Unnamed Device'}
+          </Text>
+        )}
       />
-    )}
-  </SafeAreaView>
-);
 
+      {/* ✅ Live BLE data display */}
+      <Text style={styles.latestValue}>{latestValue}</Text>
+
+      {/* Button to read data from the connected device */}
+      {connectedDevice && (
+        <Button
+          title="Read Data"
+          onPress={() => {
+            enableNotifications(
+              connectedDevice,
+              '0000181a-0000-1000-8000-00805f9b34fb', // Service UUID for environmental sensing (ESS)
+              '00002bd1-0000-1000-8000-00805f9b34fb', // Characteristic UUID for ch4 (methane)
+            );
+          }}
+        />
+      )}
+    </SafeAreaView>
+  );
 };
 
 export default BLELoggerApp;
