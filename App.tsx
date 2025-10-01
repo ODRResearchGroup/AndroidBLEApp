@@ -13,6 +13,8 @@ import {BleManager, Device} from 'react-native-ble-plx';
 import KeepAwake from 'react-native-keep-awake';
 import mitt from 'mitt';
 import {AppEventEmitter, BLEDataUpdated, SensorEvent} from './types';
+import {InfluxDBClient} from './influxdb';
+import {CONFIG} from './config';
 
 var base64 = require('base-64');
 
@@ -50,6 +52,13 @@ const BLELoggerApp = () => {
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   //Sofia: latest reading to be pasted in GUI
   const [latestValue, setLatestValue] = useState<string>('Waiting for data...');
+
+  // InfluxDB setup
+  const token = CONFIG.INFLUX_TOKEN || '';
+  const url = CONFIG.INFLUX_URL || '';
+  const org = CONFIG.INFLUX_ORG || '';
+  const bucket = CONFIG.INFLUX_BUCKET || '';
+  const [influxClient] = useState<InfluxDBClient>(new InfluxDBClient(url, token, org, bucket));
 
   useEffect(() => {
     requestPermissions();
@@ -175,7 +184,7 @@ const BLELoggerApp = () => {
 
   // Subscribe to BLE data updates
   useEffect(() => {
-    const handleBLEUpdate = (event: BLEDataUpdated) => {
+    const handleBLEUpdate = async (event: BLEDataUpdated) => {
       /*
       TODO Here is where SensorEvents should be created and emitted, I think.
       Though, we might want some logic to wait for all 8 sensor readings before emitting a SensorEvent.
@@ -184,11 +193,48 @@ const BLELoggerApp = () => {
       */
 
       console.log('BLE data updated:', event);
+
+      // Emit a SensorEvent for each BLE update for now
+      const sensorEvent: SensorEvent = {
+        type: 'sensor_reading',
+        timestamp: new Date(),
+        source: event.source,
+        olfactoryData: {
+          readings: {
+            methane: event.decodedValue ? base64ToDecimal(event.rawValue) : 0,
+          },
+          units: {
+            methane: 'ppm',
+          },
+        },
+      };
+
+      eventEmitter.emit('sensor_reading', sensorEvent);
+
+      // Update the value on the screen
       setLatestValue(`${event.decodedValue || event.rawValue}`);
     };
 
-    const handleSensorReading = (event: SensorEvent) => {
+    const handleSensorReading = async (event: SensorEvent) => {
       console.log('Sensor reading:', event);
+
+      // Write sensor data to InfluxDB
+      if (event.olfactoryData && event.olfactoryData.readings) {
+        try {
+          await influxClient.writeData(
+            'sensor_readings',
+            {
+              source: event.source || 'unknown',
+              device_type: 'olfactory_sensor',
+            },
+            event.olfactoryData.readings,
+            event.timestamp
+          );
+          console.log('Sensor data written to InfluxDB');
+        } catch (error) {
+          console.error('Error writing sensor data to InfluxDB:', error);
+        }
+      }
     };
 
     // Subscribe to events
@@ -200,7 +246,7 @@ const BLELoggerApp = () => {
       eventEmitter.off('ble_data_updated', handleBLEUpdate);
       eventEmitter.off('sensor_reading', handleSensorReading);
     };
-  }, []);
+  }, [influxClient]);
 
   const base64ToDecimal = (encodedString: string) => {
     // Convert base 64 encoded string to text
@@ -213,7 +259,7 @@ const BLELoggerApp = () => {
     }
 
     // Join all decimals to get the final decimal for the entire string
-    return parseInt(decimalArray.join(''));
+    return parseInt(decimalArray.join(''), 10);
   };
 
   // return (

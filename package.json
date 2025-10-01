@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@nivo/core": "^0.99.0",
     "base-64": "^1.0.0",
     "react": "19.0.0",
     "react-native": "0.79.2",

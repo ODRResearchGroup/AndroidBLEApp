@@ -119,3 +119,7 @@ google-services.json
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+.env
+
+config.ts
