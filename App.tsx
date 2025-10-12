@@ -58,7 +58,9 @@ const BLELoggerApp = () => {
   const url = CONFIG.INFLUX_URL || '';
   const org = CONFIG.INFLUX_ORG || '';
   const bucket = CONFIG.INFLUX_BUCKET || '';
-  const [influxClient] = useState<InfluxDBClient>(new InfluxDBClient(url, token, org, bucket));
+  const [influxClient] = useState<InfluxDBClient>(
+    new InfluxDBClient(url, token, org, bucket),
+  );
 
   useEffect(() => {
     requestPermissions();
@@ -228,7 +230,7 @@ const BLELoggerApp = () => {
               device_type: 'olfactory_sensor',
             },
             event.olfactoryData.readings,
-            event.timestamp
+            event.timestamp,
           );
           console.log('Sensor data written to InfluxDB');
         } catch (error) {

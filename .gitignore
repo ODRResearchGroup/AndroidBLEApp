@@ -123,3 +123,7 @@ google-services.json
 .env
 
 config.ts
+
+config.local.ts
+
+config.remote.ts
