@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Text,
   Button,
@@ -6,6 +6,8 @@ import {
   SafeAreaView,
   StyleSheet,
   View,
+  Pressable,
+  Alert,
 } from 'react-native';
 import {Device} from 'react-native-ble-plx';
 import KeepAwake from 'react-native-keep-awake';
@@ -30,6 +32,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000000', // black text
   },
+  selectedItem: {
+    backgroundColor: '#d0f0ff',
+    borderRadius: 6,
+    padding: 12,
+  },
   latestValue: {
     padding: 16,
     fontSize: 18,
@@ -48,6 +55,55 @@ const BLELoggerApp = () => {
     characteristicValues,
   } = useBLE();
 
+  // local UI state for selecting a device before connecting
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+
+  // Reusable notification specification list used when connecting
+  const notificationSpecs = [
+    // ESS service
+    {
+      serviceUUID: '0000181a-0000-1000-8000-00805f9b34fb',
+      characteristicUUID: '00002bd1-0000-1000-8000-00805f9b34fb',
+      label: 'Methane',
+    },
+    {
+      serviceUUID: '0000181a-0000-1000-8000-00805f9b34fb',
+      characteristicUUID: '00002bd2-0000-1000-8000-00805f9b34fb',
+      label: 'Nitrogen Dioxide',
+    },
+    {
+      serviceUUID: '0000181a-0000-1000-8000-00805f9b34fb',
+      characteristicUUID: '00002bd3-0000-1000-8000-00805f9b34fb',
+      label: 'Voletile Organic Compounds',
+    },
+    {
+      serviceUUID: '0000181a-0000-1000-8000-00805f9b34fb',
+      characteristicUUID: '00002bcf-0000-1000-8000-00805f9b34fb',
+      label: 'Ammonia',
+    },
+    // Custom service
+    {
+      serviceUUID: 'de664a17-7db4-449f-97ba-5514e19a9d94',
+      characteristicUUID: '6a135b89-f360-4f64-86fc-5a14092034b4',
+      label: 'Formaldehyde',
+    },
+    {
+      serviceUUID: 'de664a17-7db4-449f-97ba-5514e19a9d94',
+      characteristicUUID: '4c28fcb8-d69b-404a-8668-41655d814e7f',
+      label: 'Odor',
+    },
+    {
+      serviceUUID: 'de664a17-7db4-449f-97ba-5514e19a9d94',
+      characteristicUUID: 'f8156843-6d98-4ba2-8014-1cf03d7dedb8',
+      label: 'Ethanol',
+    },
+    {
+      serviceUUID: 'de664a17-7db4-449f-97ba-5514e19a9d94',
+      characteristicUUID: '87dc71bd-29a4-4218-a2a7-83fd2a69cc40',
+      label: 'Hydrogen Sulfide',
+    },
+  ];
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeepAwake />
@@ -61,13 +117,47 @@ const BLELoggerApp = () => {
         data={devices}
         keyExtractor={item => item.id}
         renderItem={({item}) => (
-          <Text onPress={() => connectToDevice(item)} style={styles.item}>
-            {item.name || 'Unnamed Device'}
-          </Text>
+          <Pressable
+            onPress={() => setSelectedDeviceId(item.id)}
+            style={({ pressed }) => [
+              styles.item,
+              selectedDeviceId === item.id && styles.selectedItem,
+              pressed && { opacity: 0.6 },
+            ]}
+          >
+            <Text>{item.name || 'Unnamed Device'}</Text>
+          </Pressable>
         )}
       />
 
+
+
+      {/* Show connect button when a device is selected */}
+      {selectedDeviceId && (
+        <View style={{ padding: 8 }}>
+          <Button
+            title="Connect"
+            onPress={async () => {
+              const selected = devices.find(d => d.id === selectedDeviceId);
+              if (!selected) return Alert.alert('Device not found');
+
+              try {
+                await connectToDevice(selected as Device);
+                // enable notifications immediately after successful connect
+                await enableNotifications(selected as Device, notificationSpecs);
+                setSelectedDeviceId(null);
+                Alert.alert('Connected', `${selected.name || 'Device'} connected and notifications enabled.`);
+              } catch (err: any) {
+                console.error('Connect+notify error:', err);
+                Alert.alert('Connection failed', err?.message || String(err));
+              }
+            }}
+          />
+        </View>
+      )}
+
       {/* Live values */}
+      
       <View style={styles.container}>
         {Object.entries(characteristicValues).map(([label, value]) => (
           <Text key={label} style={styles.latestValue}>
@@ -76,58 +166,7 @@ const BLELoggerApp = () => {
         ))}
       </View>
 
-      {/* Read data button once device connected */}
-      {connectedDevice && (
-        <Button
-          title="Read Data"
-          onPress={() => {
-            enableNotifications(connectedDevice, [
-              // ESS service
-              {
-                serviceUUID: '0000181a-0000-1000-8000-00805f9b34fb',
-                characteristicUUID: '00002bd1-0000-1000-8000-00805f9b34fb',
-                label: 'Methane',
-              },
-              {
-                serviceUUID: '0000181a-0000-1000-8000-00805f9b34fb',
-                characteristicUUID: '00002bd2-0000-1000-8000-00805f9b34fb',
-                label: 'Nitrogen Dioxide',
-              },
-              {
-                serviceUUID: '0000181a-0000-1000-8000-00805f9b34fb',
-                characteristicUUID: '00002bd3-0000-1000-8000-00805f9b34fb',
-                label: 'Voletile Organic Compounds',
-              },
-              {
-                serviceUUID: '0000181a-0000-1000-8000-00805f9b34fb',
-                characteristicUUID: '00002bcf-0000-1000-8000-00805f9b34fb',
-                label: 'Ammonia',
-              },
-              // Custom service
-              {
-                serviceUUID: 'de664a17-7db4-449f-97ba-5514e19a9d94',
-                characteristicUUID: '6a135b89-f360-4f64-86fc-5a14092034b4',
-                label: 'Formaldehyde',
-              },
-              {
-                serviceUUID: 'de664a17-7db4-449f-97ba-5514e19a9d94',
-                characteristicUUID: '4c28fcb8-d69b-404a-8668-41655d814e7f',
-                label: 'Odor',
-              },
-              {
-                serviceUUID: 'de664a17-7db4-449f-97ba-5514e19a9d94',
-                characteristicUUID: 'f8156843-6d98-4ba2-8014-1cf03d7dedb8',
-                label: 'Ethanol',
-              },
-              {
-                serviceUUID: 'de664a17-7db4-449f-97ba-5514e19a9d94',
-                characteristicUUID: '87dc71bd-29a4-4218-a2a7-83fd2a69cc40',
-                label: 'Hydrogen Sulfide',
-              },
-            ]);
-          }}
-        />
-      )}
+      {/* Previously there was a manual 'Activate Sensors' button; notifications are now enabled automatically on Connect */}
     </SafeAreaView>
   );
 };

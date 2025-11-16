@@ -30,7 +30,6 @@ export interface SensorEvent {
   olfactoryData?: {
     readings: Record<string, number>;
     units: Record<string, string>;
-  description: string;
   };
 }
 

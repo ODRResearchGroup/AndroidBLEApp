@@ -8,14 +8,12 @@ type Props = { navigation: any };
 export default function HomeScreen({ navigation }: Props) {
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Home Screen</Text>
+      <Text>Lets Get Started!</Text>
       <Button
-        title="Connect Device"
-        onPress={() => navigation.navigate('Device')}
+        title="Live Data"
+        onPress={() => navigation.navigate('Live')}
       />
-      <Button title="Data Display" 
-      onPress={() => navigation.navigate('Data Display')}
-   />
+
     </View>
   );
 }
