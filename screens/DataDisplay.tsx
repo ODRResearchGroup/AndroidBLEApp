@@ -52,6 +52,7 @@ const DataDisplay = () => {
   const [showTextInput, setShowTextInput] = useState(false);
   const [description, setDescription] = useState('');
 
+  // Transform BLE data for radar chart
   const radarData = [
     {label: '3. Ch4', value: methane},
     {label: '2. NH3', value: ammonia},
@@ -88,40 +89,41 @@ const DataDisplay = () => {
   }, []);
 
   const fingerprint: SensorEvent = {
-    type: 'sensor_reading',
-    timestamp: new Date(),
-    source: 'BLE Device',
-    olfactoryData: {
-      readings: {
-        CH4: methane,
-        NH3: ammonia,
-        HCHO: formaldehyde,
-        VOC: voc,
-        Odour: odour,
-        H2S: hydrogenSulfide,
-        Etoh: ethanol,
-        NO2: nitrogenDioxide,
-      },
-      units: {
-        CH4: 'ppm',
-        NH3: 'ppm',
-        HCHO: 'ppm',
-        VOC: 'ppm',
-        Odour: 'a.u.',
-        H2S: 'ppm',
-        Etoh: 'ppm',
-        NO2: 'ppm',
-      },
-    },
-  };
-
-  const savedData: savedFingerprintData = {
-    fingerprint,
-    location,
-    humanDescription: {description},
-    timestamp: new Date(),
-  };
   const saveFingerprint = async () => {
+    const fingerprint: SensorEvent = {
+      type: 'sensor_reading',
+      timestamp: new Date(),
+      source: 'BLE Device',
+      olfactoryData: {
+        readings: {
+          CH4: methane,
+          NH3: ammonia,
+          HCHO: formaldehyde,
+          VOC: voc,
+          Odour: odour,
+          H2S: hydrogenSulfide,
+          Etoh: ethanol,
+          NO2: nitrogenDioxide,
+        },
+        units: {
+          CH4: 'ppm',
+          NH3: 'ppm',
+          HCHO: 'ppm',
+          VOC: 'ppm',
+          Odour: 'a.u.',
+          H2S: 'ppm',
+          Etoh: 'ppm',
+          NO2: 'ppm',
+        },
+      },
+    };
+
+    const savedData: savedFingerprintData = {
+      fingerprint,
+      location,
+      humanDescription: {description},
+      timestamp: new Date(),
+    };
     emitter.emit('sensor_reading', fingerprint);
 
     const stringData = JSON.stringify(savedData);
