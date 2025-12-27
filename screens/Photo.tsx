@@ -1,142 +1,92 @@
-import React, { useState } from 'react';
-import { View, Text, Button, Image, Platform, PermissionsAndroid } from 'react-native';
-import { launchCamera } from 'react-native-image-picker';
-import ReactNativeBlobUtil from 'react-native-blob-util';
-import { Buffer } from 'buffer';
-import { supabase } from '../services/Supabase';
+import React, { useRef, useState } from 'react';
+import { View, Text, Button, Image } from 'react-native';
+import { capturePhoto } from '../services/photoCapture';
+import { getOneShotLocation } from '../services/photoLocation';
+import { uploadPhotoToSupabase, uploadPhotoBundleJsonToSupabase } from '../services/photoUpload';
+import type { PhotoBundle } from '../services/photoTypes';
 
-async function ensureCameraPermission() {
-  if (Platform.OS !== 'android') {
-    return true;
-  }
-
-  const granted = await PermissionsAndroid.request(
-    PermissionsAndroid.PERMISSIONS.CAMERA
-  );
-
-  if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-    return true;
-  }
-
-  return false;
-}
-
-async function getReadablePathFromUri(uri: string) {
-  if (uri.startsWith('file://')) {
-    return uri.replace(/^file:\/\//, '');
-  }
-
-  if (uri.startsWith('content://')) {
-    const stat = await ReactNativeBlobUtil.fs.stat(uri);
-    if (stat && stat.path) {
-      return stat.path;
-    }
-  }
-
-  return uri;
-}
-
-function pickContentType(fileName?: string) {
-  const lower = (fileName ?? '').toLowerCase();
-  if (lower.endsWith('.png')) {
-    return 'image/png';
-  }
-  return 'image/jpeg';
-}
-
-export default function PhotoCaptureUploadScreen() {
+export default function PhotoScreen() {
   const [status, setStatus] = useState('Idle');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoFileName, setPhotoFileName] = useState<string | null>(null);
   const [lastUploadPath, setLastUploadPath] = useState<string | null>(null);
+  const [lastBundlePath, setLastBundlePath] = useState<string | null>(null);
+
+  const captureIdRef = useRef<string | null>(null);
+  const capturedAtMsRef = useRef<number | null>(null);
+  const pointRef = useRef<PhotoBundle['point']>(null);
 
   const takePhoto = async () => {
     try {
-      const ok = await ensureCameraPermission();
-      if (!ok) {
-        setStatus('Camera permission denied');
-        return;
-      }
-
-      setStatus('Opening camera...');
+      setStatus('Capturing photo...');
       setLastUploadPath(null);
+      setLastBundlePath(null);
 
-      const result = await launchCamera({
-        mediaType: 'photo',
-        cameraType: 'back',
-        saveToPhotos: false,
-        includeExtra: false,
-        quality: 0.9,
-      });
+      const captureId = `${Date.now()}`;
+      captureIdRef.current = captureId;
 
-      if (result.didCancel) {
-        setStatus('Cancelled');
-        return;
+      const capturedAtMs = Date.now();
+      capturedAtMsRef.current = capturedAtMs;
+
+      const loc = await getOneShotLocation();
+      if (loc) {
+        pointRef.current = {
+          t_ms: 0,
+          lat: loc.lat,
+          lon: loc.lon,
+          accuracy_m: loc.accuracy_m,
+        };
+      } else {
+        pointRef.current = null;
       }
 
-      if (result.errorCode) {
-        setStatus(`Camera error: ${result.errorMessage ?? result.errorCode}`);
-        return;
-      }
+      const photo = await capturePhoto();
 
-      const asset = result.assets && result.assets[0] ? result.assets[0] : null;
-      if (!asset || !asset.uri) {
-        setStatus('No photo returned');
-        return;
-      }
-
-      setPhotoUri(asset.uri);
-      setPhotoFileName(asset.fileName ?? null);
-      setStatus('Photo captured ✅');
+      setPhotoUri(photo.uri);
+      setPhotoFileName(photo.fileName);
+      setStatus('Photo captured ✅ (ready to upload)');
     } catch (e: any) {
       console.error(e);
       setStatus(`Error: ${e?.message ?? String(e)}`);
     }
   };
 
-  const uploadPhoto = async () => {
+  const uploadBundle = async () => {
     try {
       if (!photoUri) {
         setStatus('No photo to upload yet');
         return;
       }
 
-      setStatus('Preparing file...');
-      const readablePath = await getReadablePathFromUri(photoUri);
+      const captureId = captureIdRef.current;
+      const capturedAtMs = capturedAtMsRef.current;
 
-      const exists = await ReactNativeBlobUtil.fs.exists(readablePath);
-      if (!exists) {
-        setStatus(`File not found: ${readablePath}`);
+      if (!captureId || !capturedAtMs) {
+        setStatus('Missing capture metadata');
         return;
       }
 
-      setStatus('Reading bytes...');
-      const base64 = await ReactNativeBlobUtil.fs.readFile(readablePath, 'base64');
-      const bytes = Uint8Array.from(Buffer.from(base64, 'base64'));
+      setStatus('Uploading photo...');
+      const photoRes = await uploadPhotoToSupabase(photoUri, captureId, photoFileName);
 
-      const bucket = 'images';
-      const ext =
-        (photoFileName && photoFileName.includes('.'))
-          ? photoFileName.split('.').pop()?.toLowerCase()
-          : 'jpg';
+      const bundle: PhotoBundle = {
+        schema: 'photo_gps_bundle_v1',
+        captured_at_ms: capturedAtMs,
+        photo: {
+          bucket: photoRes.bucket,
+          path: photoRes.storagePath,
+          contentType: photoRes.contentType,
+          originalFileName: photoFileName,
+        },
+        point: pointRef.current,
+      };
 
-      const filePath = `photos/photo-${Date.now()}.${ext ?? 'jpg'}`;
-      const contentType = pickContentType(photoFileName ?? undefined);
+      setStatus('Uploading bundle JSON...');
+      const bundleRes = await uploadPhotoBundleJsonToSupabase(bundle, captureId);
 
-      setStatus('Uploading to Supabase...');
-      const { error } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, bytes, {
-          contentType,
-          upsert: false,
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      setLastUploadPath(filePath);
-      setStatus('Uploaded ✅');
+      setLastUploadPath(photoRes.storagePath);
+      setLastBundlePath(bundleRes.storagePath);
+      setStatus('Bundle uploaded ✅');
     } catch (e: any) {
       console.error(e);
       setStatus(`Error: ${e?.message ?? String(e)}`);
@@ -145,22 +95,20 @@ export default function PhotoCaptureUploadScreen() {
 
   return (
     <View style={{ padding: 16, gap: 12 }}>
-      <Text style={{ fontSize: 18, fontWeight: '600' }}>Photo Capture + Upload</Text>
+      <Text style={{ fontSize: 18, fontWeight: "600" }}>Photo + Location Bundle</Text>
 
       <Text>{status}</Text>
 
       <Button title="Take photo" onPress={takePhoto} />
-      <Button title="Upload photo" onPress={uploadPhoto} />
+      <Button title="Upload bundle" onPress={uploadBundle} />
 
       {photoUri ? (
-        <Image
-          source={{ uri: photoUri }}
-          style={{ width: 240, height: 240, borderRadius: 12 }}
-        />
+        <Image source={{ uri: photoUri }} style={{ width: 240, height: 240, borderRadius: 12 }} />
       ) : null}
 
       {photoUri ? <Text>Local: {photoUri}</Text> : null}
-      {lastUploadPath ? <Text>Uploaded: {lastUploadPath}</Text> : null}
+      {lastUploadPath ? <Text>Uploaded photo: {lastUploadPath}</Text> : null}
+      {lastBundlePath ? <Text>Uploaded bundle: {lastBundlePath}</Text> : null}
     </View>
   );
 }

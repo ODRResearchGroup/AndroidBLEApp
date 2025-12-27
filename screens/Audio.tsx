@@ -1,84 +1,37 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, Button, Platform, PermissionsAndroid } from 'react-native';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-import ReactNativeBlobUtil from 'react-native-blob-util';
-import { Buffer } from 'buffer';
-import { supabase } from '../services/Supabase';
+import { View, Text, Button } from 'react-native';
+import { startAudioRecording, stopAudioRecording } from '../services/audioRecorder';
+import { startAudioTrack, stopAudioTrack, type AudioTrackBundle } from '../services/audioTrack';
+import { uploadAudioToSupabase, uploadAudioTrackJsonToSupabase } from '../services/audioUpload';
 
-async function ensureMicPermission() {
-  if (Platform.OS !== 'android') {
-    return true;
-  }
-
-  const granted = await PermissionsAndroid.request(
-    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
-  );
-
-  if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-    return true;
-  }
-
-  return false;
-}
-
-function pickFileExtension() {
-  return 'm4a';
-}
-
-function pickContentType(ext: string) {
-  if (ext === 'm4a') {
-    return 'audio/mp4';
-  }
-  if (ext === 'aac') {
-    return 'audio/aac';
-  }
-  if (ext === 'wav') {
-    return 'audio/wav';
-  }
-  return 'application/octet-stream';
-}
-
-function normalizeFilePath(path: string) {
-  // iOS often returns file:///... which blob-util does not accept.
-  if (path.startsWith('file://')) {
-    return path.replace(/^file:\/\//, '');
-  }
-  return path;
-}
-
-export default function AudioRecordUploadScreen() {
+export default function AudioScreen() {
   const [status, setStatus] = useState('Idle');
   const [isRecording, setIsRecording] = useState(false);
-  const [localPath, setLocalPath] = useState<string | null>(null);
+  const [localUri, setLocalUri] = useState<string | null>(null);
   const [lastUploadPath, setLastUploadPath] = useState<string | null>(null);
+  const [lastTrackPath, setLastTrackPath] = useState<string | null>(null);
 
-  const recordPathRef = useRef<string | null>(null);
+  const recordingIdRef = useRef<string | null>(null);
+  const plannedPathRef = useRef<string | null>(null);
+  const trackRef = useRef<AudioTrackBundle | null>(null);
 
   const startRecording = async () => {
     try {
-      const ok = await ensureMicPermission();
-      if (!ok) {
-        setStatus('Microphone permission denied');
-        return;
-      }
-
       setStatus('Starting recording...');
       setLastUploadPath(null);
+      setLastTrackPath(null);
 
-      const ext = pickFileExtension();
+      const recordingId = `${Date.now()}`;
+      recordingIdRef.current = recordingId;
+      trackRef.current = null;
 
-      const baseDir =
-        Platform.OS === 'android'
-          ? ReactNativeBlobUtil.fs.dirs.CacheDir
-          : ReactNativeBlobUtil.fs.dirs.DocumentDir;
+      await startAudioTrack(Number(recordingId));
 
-      const path = `${baseDir}/recording-${Date.now()}.${ext}`;
-      recordPathRef.current = path;
-
-      const resultPath = await AudioRecorderPlayer.startRecorder(path);
+      const res = await startAudioRecording(recordingId);
+      plannedPathRef.current = res.plannedPath;
 
       setIsRecording(true);
-      setLocalPath(resultPath);
+      setLocalUri(res.localUri);
       setStatus('Recording...');
     } catch (e: any) {
       console.error(e);
@@ -90,11 +43,18 @@ export default function AudioRecordUploadScreen() {
     try {
       setStatus('Stopping recording...');
 
-      const resultPath = await AudioRecorderPlayer.stopRecorder();
-      AudioRecorderPlayer.removeRecordBackListener();
+      const res = await stopAudioRecording();
+      const track = stopAudioTrack();
+
+      trackRef.current = track;
 
       setIsRecording(false);
-      setLocalPath(resultPath || recordPathRef.current);
+
+      const finalUri = res.localUri || plannedPathRef.current;
+      if (finalUri) {
+        setLocalUri(finalUri);
+      }
+
       setStatus('Recorded ✅ (ready to upload)');
     } catch (e: any) {
       console.error(e);
@@ -102,9 +62,9 @@ export default function AudioRecordUploadScreen() {
     }
   };
 
-  const uploadRecording = async () => {
+  const uploadBundle = async () => {
     try {
-      if (!localPath) {
+      if (!localUri) {
         setStatus('No recording found yet');
         return;
       }
@@ -114,37 +74,31 @@ export default function AudioRecordUploadScreen() {
         return;
       }
 
-      const normalizedPath = normalizeFilePath(localPath);
-
-      setStatus('Checking file...');
-      const exists = await ReactNativeBlobUtil.fs.exists(normalizedPath);
-      if (!exists) {
-        setStatus(`File not found: ${normalizedPath}`);
+      const recordingId = recordingIdRef.current;
+      if (!recordingId) {
+        setStatus('Missing recording id');
         return;
       }
 
-      setStatus('Reading file...');
-      const base64 = await ReactNativeBlobUtil.fs.readFile(normalizedPath, 'base64');
-      const bytes = Uint8Array.from(Buffer.from(base64, 'base64'));
-
-      const bucket = 'audio-recordings';
-      const ext = normalizedPath.split('.').pop()?.toLowerCase() || 'm4a';
-      const filePath = `recordings/audio-${Date.now()}.${ext}`;
-
-      setStatus('Uploading to Supabase...');
-      const { error } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, bytes, {
-          contentType: pickContentType(ext),
-          upsert: false,
-        });
-
-      if (error) {
-        throw error;
+      const track = trackRef.current;
+      if (!track) {
+        setStatus('Missing track data');
+        return;
       }
 
-      setLastUploadPath(filePath);
-      setStatus('Uploaded ✅');
+      setStatus('Uploading audio...');
+      const audioRes = await uploadAudioToSupabase(localUri, recordingId);
+
+      setStatus('Uploading track JSON...');
+      const trackRes = await uploadAudioTrackJsonToSupabase(
+        track,
+        recordingId,
+        audioRes.storagePath
+      );
+
+      setLastUploadPath(audioRes.storagePath);
+      setLastTrackPath(trackRes.storagePath);
+      setStatus('Bundle uploaded ✅');
     } catch (e: any) {
       console.error(e);
       setStatus(`Error: ${e?.message ?? String(e)}`);
@@ -153,9 +107,7 @@ export default function AudioRecordUploadScreen() {
 
   return (
     <View style={{ padding: 16, gap: 12 }}>
-      <Text style={{ fontSize: 18, fontWeight: '600' }}>
-        Audio Record + Upload
-      </Text>
+      <Text style={{ fontSize: 18, fontWeight: '600' }}>Audio + Track</Text>
 
       <Text>{status}</Text>
 
@@ -165,10 +117,13 @@ export default function AudioRecordUploadScreen() {
         <Button title="Stop recording" onPress={stopRecording} />
       )}
 
-      <Button title="Upload recording" onPress={uploadRecording} />
+      <Button title="Upload bundle" onPress={uploadBundle} />
 
-      {localPath ? <Text>Local: {localPath}</Text> : null}
-      {lastUploadPath ? <Text>Uploaded: {lastUploadPath}</Text> : null}
+      {localUri ? <Text>Local: {localUri}</Text> : null}
+      {lastUploadPath ? <Text>Uploaded audio: {lastUploadPath}</Text> : null}
+      {lastTrackPath ? <Text>Uploaded track: {lastTrackPath}</Text> : null}
+
+      {trackRef.current ? <Text>Points: {trackRef.current.points.length}</Text> : null}
     </View>
   );
 }
