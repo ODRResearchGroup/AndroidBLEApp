@@ -32,13 +32,26 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-  <!-- Blueooth and location access for ios -->
+
+	<!-- Blueooth and location access for ios -->
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>This app uses Bluetooth to connect to nearby devices.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>This app uses Bluetooth to connect to nearby devices.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app uses your location to scan for Bluetooth devices.</string>
+
+	<!-- Microphone access for audio recording -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs microphone access to record audio.</string>
+
+	<!-- Camera access for taking photos -->
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to take photos.</string>
+
+	<!-- Optional: only needed if you ever set saveToPhotos: true -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>This app needs permission to save photos to your library.</string>
 
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
