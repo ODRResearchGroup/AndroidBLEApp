@@ -7,7 +7,6 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import {Device} from 'react-native-ble-plx';
 import KeepAwake from 'react-native-keep-awake';
 import {useBLE} from '../BLEUniversal'; // adjust relative path
 

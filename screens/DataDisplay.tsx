@@ -1,68 +1,284 @@
-import 'react-native-reanimated';
 import React, {useState, useEffect} from 'react';
-import {View, Text, ScrollView, SafeAreaView, StyleSheet} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  StyleSheet,
+  View,
+  SafeAreaView,
+  Text,
+  Button,
+  ScrollView,
+  TextInput,
+} from 'react-native';
 import {useBLE} from '../BLEUniversal';
-import {RadarChart} from '@salmonco/react-native-radar-chart';
+import {
+  VictoryChart,
+  VictoryTheme,
+  VictoryArea,
+  VictoryPolarAxis,
+} from 'victory-native';
+import Slider from '@react-native-community/slider';
+import {emitter} from '../types';
+
+import Share from 'react-native-share';
+
+import {SensorEvent} from '../types';
+import {DocumentDirectoryPath, writeFile} from 'react-native-fs';
+import useLiveLocation from '../util/useLiveLocation';
+
+type savedFingerprintData = {
+  fingerprint: SensorEvent;
+  location: {latitude: number; longitude: number} | null;
+  humanDescription: {description: string};
+  timestamp: Date;
+};
 
 const DataDisplay = () => {
   const {characteristicValues} = useBLE();
-
-  // Values are already numbers, no need for parseFloat
-  const methane = characteristicValues['Methane'] || 0;
-  const ammonia = characteristicValues['Ammonia'] || 0;
-  const formaldehyde = characteristicValues['Formaldehyde'] || 0;
+  const {location} = useLiveLocation();
+  const methane = characteristicValues.Methane || 0;
+  const ammonia = characteristicValues.Ammonia || 0;
+  const formaldehyde = characteristicValues.Formaldehyde || 0;
   const voc = characteristicValues['Voletile Organic Compounds'] || 0;
-  const odour = characteristicValues['Odor'] || 0;
+  const odour = characteristicValues.Odor || 0;
   const hydrogenSulfide = characteristicValues['Hydrogen Sulfide'] || 0;
-  const ethanol = characteristicValues['Ethanol'] || 0;
+  const ethanol = characteristicValues.Ethanol || 0;
   const nitrogenDioxide = characteristicValues['Nitrogen Dioxide'] || 0;
+
+  const [zoomLevel, setZoomLevel] = useState(4);
+  const [historicalfingerprints, setHistoricalfingerprints] = useState<
+    savedFingerprintData[]
+  >([]);
+  const [showfingerprints, setShowfingerprints] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [description, setDescription] = useState('');
 
   // Transform BLE data for radar chart
   const radarData = [
-    {label: 'Ch4', value: methane}, // Use raw small values
-    {label: 'NH3', value: ammonia},
-    {label: 'HCHO', value: formaldehyde},
-    {label: 'VOC', value: voc},
-    {label: 'Odour', value: odour},
-    {label: 'H2S', value: hydrogenSulfide},
-    {label: 'Etoh', value: ethanol},
-    {label: 'No2', value: nitrogenDioxide},
+    {label: '3. Ch4', value: methane},
+    {label: '2. NH3', value: ammonia},
+    {label: '1. HCHO', value: formaldehyde},
+    {label: '8. VOC', value: voc},
+    {label: '7. Odour', value: odour},
+    {label: '6. H2S', value: hydrogenSulfide},
+    {label: '5. Etoh', value: ethanol},
+    {label: '4. No2', value: nitrogenDioxide},
   ].filter(item => !isNaN(item.value));
 
+  useEffect(() => {
+    const loadFingerprints = async () => {
+      try {
+        const keys = await AsyncStorage.getAllKeys();
+        const fingerprintKeys = keys.filter(k =>
+          k.startsWith('sensor_fingerprint_'),
+        );
+        const savedData = await AsyncStorage.multiGet(fingerprintKeys);
+        console.log(savedData);
+
+        // Filter out null values before parsing
+        const parsedData = savedData
+          .map(([_, value]) => (value ? JSON.parse(value) : null))
+          .filter(item => item !== null);
+
+        setHistoricalfingerprints(parsedData as savedFingerprintData[]);
+      } catch (err) {
+        console.error('Error loading fingerprints:', err);
+      }
+    };
+
+    loadFingerprints();
+  }, []);
+
+  const fingerprint: SensorEvent = {
+  const saveFingerprint = async () => {
+    const fingerprint: SensorEvent = {
+      type: 'sensor_reading',
+      timestamp: new Date(),
+      source: 'BLE Device',
+      olfactoryData: {
+        readings: {
+          CH4: methane,
+          NH3: ammonia,
+          HCHO: formaldehyde,
+          VOC: voc,
+          Odour: odour,
+          H2S: hydrogenSulfide,
+          Etoh: ethanol,
+          NO2: nitrogenDioxide,
+        },
+        units: {
+          CH4: 'ppm',
+          NH3: 'ppm',
+          HCHO: 'ppm',
+          VOC: 'ppm',
+          Odour: 'a.u.',
+          H2S: 'ppm',
+          Etoh: 'ppm',
+          NO2: 'ppm',
+        },
+      },
+    };
+
+    const savedData: savedFingerprintData = {
+      fingerprint,
+      location,
+      humanDescription: {description},
+      timestamp: new Date(),
+    };
+    emitter.emit('sensor_reading', fingerprint);
+
+    const stringData = JSON.stringify(savedData);
+    const key = `sensor_fingerprint_${savedData.timestamp.getTime()}`;
+
+    try {
+      await AsyncStorage.setItem(key, stringData);
+      setHistoricalfingerprints(prev => [savedData, ...prev]);
+      setShowTextInput(false);
+      setDescription('');
+    } catch (err) {
+      console.error('Failed to save fingerprint:', err);
+    }
+  };
+  const saveFile = async () => {
+    const path = `${DocumentDirectoryPath}/${Date.now()}.json`;
+    await writeFile(path, JSON.stringify(historicalfingerprints));
+    return path;
+  };
+
+  const onShare = async () => {
+    try {
+      const path = await saveFile();
+      console.log('saved');
+      const shareOptions = {
+        title: 'Share file',
+        failOnCancel: false,
+        saveToFiles: true,
+        urls: [path],
+        //here you need to mention saving file
+      };
+      const ShareResponse = await Share.open(shareOptions);
+      console.log('Result =>', ShareResponse);
+    } catch (error) {
+      console.log('Error =>', error);
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Data Dashboard</Text>
+    <ScrollView>
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.title}>Data Dashboard</Text>
+        <VictoryChart
+          polar
+          theme={VictoryTheme.clean}
+          domain={{y: [0, zoomLevel]}}>
+          <VictoryPolarAxis
+            dependentAxis
+            labelPlacement="vertical"
+            tickFormat={() => ''}
+          />
+          <VictoryPolarAxis labelPlacement="parallel" />
+          <VictoryArea
+            interpolation="linear"
+            data={radarData.map(d => ({x: d.label, y: d.value}))}
+          />
+        </VictoryChart>
 
-      <RadarChart
-        data={radarData}
-        maxValue={1} // Radar charts need a fixed max
-        gradientColor={{
-          startColor: '#eae8e6ff',
-          endColor: '#e9ded3ff',
-          count: 5,
-        }}
-        stroke={['#FFE8D3', '#FFE8D3', '#FFE8D3', '#FFE8D3', '#ff9532']}
-        strokeWidth={[1]}
-        labelColor="#21a1b1ff"
-        dataFillColor="#3dadd0ff"
-        dataFillOpacity={0.8}
-        dataStroke="salmon"
-        dataStrokeWidth={2}
-        isCircle
-      />
+        <Slider
+          style={{width: '50%', height: 40}}
+          minimumValue={0.1}
+          step={0.05}
+          value={zoomLevel}
+          onValueChange={setZoomLevel}
+        />
 
-      {/* Show raw values for reference */}
-      <View style={styles.values}>
-        <Text>Methane: {methane.toFixed(2)}</Text>
-        <Text>Ammonia: {ammonia.toFixed(2)}</Text>
-        <Text>Formaldehyde: {formaldehyde.toFixed(2)}</Text>
-        <Text>VOC: {voc.toFixed(2)}</Text>
-        <Text>Odour: {odour.toFixed(2)}</Text>
-        <Text>Hydrogen Sulfide: {hydrogenSulfide.toFixed(2)}</Text>
-        <Text>Ethanol: {ethanol.toFixed(2)}</Text>
-        <Text>Nitrogen Dioxide: {nitrogenDioxide.toFixed(2)}</Text>
-      </View>
-    </SafeAreaView>
+        {!showTextInput ? (
+          <Button title="Fingerprint" onPress={() => setShowTextInput(true)} />
+        ) : (
+          <View>
+            <TextInput
+              placeholder="I smelled..."
+              value={description}
+              onChangeText={setDescription}
+            />
+            <Button
+              title="Save"
+              onPress={() => {
+                saveFingerprint();
+                setShowTextInput(false); // hide input after saving
+                saveFile();
+              }}
+            />
+          </View>
+        )}
+        {/* this button is for sharing the data file, which we have to later put in view */}
+        <Button onPress={onShare} title="Share" />
+        {/* Show raw values for reference */}
+        <View style={styles.values}>
+          {radarData.map((item, index) => (
+            <Text key={item.label}>
+              {index + 1}. {item.label}: {item.value.toFixed(4)}
+            </Text>
+          ))}
+        </View>
+        <Button
+          title={showfingerprints ? 'Hide Fingerprints' : 'Show Fingerprints'}
+          onPress={() => setShowfingerprints(prev => !prev)}
+        />
+
+        {/* Historical fingerprints */}
+
+        {/* Here we are rendering the fingerprint data using victory native visualisation chart */}
+        {showfingerprints && (
+          <View style={{width: '100%', marginTop: 20}}>
+            {historicalfingerprints.map((saved, idx) => {
+              const sensorReadings = saved.fingerprint?.olfactoryData?.readings;
+
+              return (
+                <View key={idx} style={[styles.container, {marginBottom: 30}]}>
+                  <Text>{new Date(saved.timestamp).toLocaleString()}</Text>
+                  <VictoryChart
+                    polar
+                    theme={VictoryTheme.clean}
+                    domain={{y: [0, 4]}}>
+                    <VictoryPolarAxis
+                      dependentAxis
+                      labelPlacement="vertical"
+                      tickFormat={() => ''}
+                    />
+                    <VictoryPolarAxis labelPlacement="parallel" />
+                    <VictoryArea
+                      interpolation="catmullRom"
+                      data={Object.entries(sensorReadings || {}).map(
+                        ([label, value]) => ({
+                          x: label,
+                          y: value,
+                        }),
+                      )}
+                    />
+                  </VictoryChart>
+                  {sensorReadings &&
+                    Object.entries(sensorReadings).map(
+                      ([key, value], index) => (
+                        <Text key={key}>
+                          {index + 1}. {key}: {value.toFixed(4)}
+                        </Text>
+                      ),
+                    )}
+
+                  <Text>
+                    Description: {saved.humanDescription?.description}
+                  </Text>
+                  <Text>
+                    {' '}
+                    Location: {saved.location?.latitude}{' '}
+                    {saved.location?.longitude}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </SafeAreaView>
+    </ScrollView>
   );
 };
 
@@ -84,89 +300,3 @@ const styles = StyleSheet.create({
 });
 
 export default DataDisplay;
-
-// Alternative implementation with Victory Native charts (commented out)
-//
-// import 'react-native-reanimated';
-// import React, {useState, useEffect} from 'react';
-// import { View, Text, Button, ScrollView } from 'react-native';
-// import { useBLE } from '../BLEUniversal';
-// //this is a library for data visualization, you can find more info here and how to download: https://nearform.com/open-source/victory-native/
-// import { CartesianChart, Line } from "victory-native";
-
-// const DataDisplay = () => {
-//   const { characteristicValues } = useBLE();
-
-//   // Values are already numbers, no parseFloat needed
-//   const methane = characteristicValues['Methane'] || 0;
-//   const ammonia = characteristicValues['Ammonia'] || 0;
-//   const formaldehyde = characteristicValues['Formaldehyde'] || 0;
-
-//   const [methaneHistory, setMethaneHistory] = useState<{x: number, y: number}[]>([]);
-//   const [ammoniaHistory, setAmmoniaHistory] = useState<{x: number, y: number}[]>([]);
-//   const [formaldehydeHistory, setFormaldehydeHistory] = useState<{x: number, y: number}[]>([]);
-
-//   const SENSOR_RANGES = {
-//     Methane: { min: 0, max: 1000 }, // ppm
-//     Formaldehyde: { min: 0, max: 1000 },  // ppm
-//   };
-
-//   useEffect(() => {
-//     // Only add to history if value exists and is a number
-//     if (methane > 0) {
-//       setMethaneHistory(prev => [...prev.slice(-50), { x: Date.now(), y: methane }]);
-//     }
-//     if (ammonia > 0) {
-//       setAmmoniaHistory(prev => [...prev.slice(-50), { x: Date.now(), y: ammonia }]);
-//     }
-//     if (formaldehyde > 0) {
-//       setFormaldehydeHistory(prev => [...prev.slice(-50), { x: Date.now(), y: formaldehyde }]);
-//     }
-//   }, [methane, ammonia, formaldehyde]);
-
-//   return (
-//     <ScrollView
-//       contentContainerStyle={{
-//         flexGrow: 1,
-//         alignItems: 'center',
-//         justifyContent: 'center',
-//         padding: 20,
-//       }}>
-//       <Text style={{ fontSize: 22, fontWeight: '600', marginBottom: 20 }}>
-//         Live Sensor Readings
-//       </Text>
-
-//       {/* Methane Chart */}
-//       <View style={{ height: 200, width: '100%' }}>
-//         <CartesianChart data={methaneHistory} xKey="x" yKeys={['y']}>
-//           {({ points }) => <Line points={points.y} color="#1e1e1eff" strokeWidth={3} />}
-//         </CartesianChart>
-//         <Text style={{ fontSize: 18, marginVertical: 6 }}>
-//           Methane: {methane.toFixed(3)}
-//         </Text>
-//       </View>
-
-//       {/* Ammonia Chart */}
-//       <View style={{ height: 200, width: '100%' }}>
-//         <CartesianChart data={ammoniaHistory} xKey="x" yKeys={['y']}>
-//           {({ points }) => <Line points={points.y} color="#6A0DAD" strokeWidth={3} />}
-//         </CartesianChart>
-//         <Text style={{ fontSize: 18, marginVertical: 6 }}>
-//           Ammonia: {ammonia.toFixed(3)}
-//         </Text>
-//       </View>
-
-//       {/* Formaldehyde Chart */}
-//       <View style={{ height: 200, width: '100%' }}>
-//         <CartesianChart data={formaldehydeHistory} xKey="x" yKeys={['y']}>
-//           {({ points }) => <Line points={points.y} color="#1f89c3ff" strokeWidth={3} />}
-//         </CartesianChart>
-//         <Text style={{ fontSize: 18, marginVertical: 6 }}>
-//           Formaldehyde: {formaldehyde.toFixed(3)}
-//         </Text>
-//       </View>
-//     </ScrollView>
-//   );
-// };
-
-// export default DataDisplay;
