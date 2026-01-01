@@ -1,11 +1,10 @@
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import { Buffer } from 'buffer';
-import { supabase } from './Supabase';
 import type { AudioTrackBundle } from './audioTrack';
 
 export type UploadAudioResult = {
-  bucket: string;
-  storagePath: string;
+  container: string;
+  blobName: string;
 };
 
 function pickAudioContentType(ext: string) {
@@ -28,7 +27,23 @@ function normalizeFilePath(path: string) {
   return path;
 }
 
-export async function uploadAudioToSupabase(localUri: string, recordingId: string): Promise<UploadAudioResult> {
+async function putBytesToSasUrl(sasUrl: string, bytes: Uint8Array, contentType: string) {
+  const res = await fetch(sasUrl, {
+    method: 'PUT',
+    headers: {
+      'x-ms-blob-type': 'BlockBlob',
+      'Content-Type': contentType,
+    },
+    body: bytes,
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Azure PUT failed: ${res.status} ${text}`);
+  }
+}
+
+export async function uploadAudioToAzure(localUri: string, sasUploadUrl: string, container: string, blobName: string): Promise<UploadAudioResult> {
   const normalizedPath = normalizeFilePath(localUri);
 
   const exists = await ReactNativeBlobUtil.fs.exists(normalizedPath);
@@ -36,52 +51,31 @@ export async function uploadAudioToSupabase(localUri: string, recordingId: strin
     throw new Error(`File not found: ${normalizedPath}`);
   }
 
+  const ext = normalizedPath.split('.').pop()?.toLowerCase() || 'm4a';
   const base64 = await ReactNativeBlobUtil.fs.readFile(normalizedPath, 'base64');
   const bytes = Uint8Array.from(Buffer.from(base64, 'base64'));
 
-  const bucket = 'audio-recordings';
-  const ext = normalizedPath.split('.').pop()?.toLowerCase() || 'm4a';
-  const storagePath = `recordings/audio-${recordingId}.${ext}`;
+  await putBytesToSasUrl(sasUploadUrl, bytes, pickAudioContentType(ext));
 
-  const { error } = await supabase.storage.from(bucket).upload(storagePath, bytes, {
-    contentType: pickAudioContentType(ext),
-    upsert: false,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return { bucket, storagePath };
+  return { container, blobName };
 }
 
-export async function uploadAudioTrackJsonToSupabase(
+export async function uploadAudioTrackJsonToAzure(
   track: AudioTrackBundle,
-  recordingId: string,
-  audioStoragePath: string
+  sasUploadUrl: string,
+  container: string,
+  blobName: string,
+  audioRef: { container: string; blobName: string }
 ) {
-  const bucket = 'audio-recordings';
-  const storagePath = `recordings/audio-${recordingId}.track.json`;
-
   const payload = {
     ...track,
-    audio: {
-      bucket,
-      path: audioStoragePath,
-    },
+    audio: audioRef,
   };
 
   const json = JSON.stringify(payload);
   const bytes = Uint8Array.from(Buffer.from(json, 'utf8'));
 
-  const { error } = await supabase.storage.from(bucket).upload(storagePath, bytes, {
-    contentType: 'application/json',
-    upsert: false,
-  });
+  await putBytesToSasUrl(sasUploadUrl, bytes, 'application/json');
 
-  if (error) {
-    throw error;
-  }
-
-  return { bucket, storagePath };
+  return { container, blobName };
 }

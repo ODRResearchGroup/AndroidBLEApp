@@ -1,6 +1,6 @@
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import { Buffer } from 'buffer';
-import { supabase } from './Supabase';
+import { supabase } from '../services/Supabase.ts';
 import type { PhotoBundle } from './photoTypes';
 
 export type UploadPhotoResult = {
