@@ -9,8 +9,9 @@ export type PhotoBundle = {
   schema: 'photo_gps_bundle_v1';
   captured_at_ms: number;
   photo: {
-    bucket: string;
-    path: string;
+    // Azure Blob Storage location
+    container: string;
+    blobName: string;
     contentType: string;
     originalFileName?: string | null;
   };

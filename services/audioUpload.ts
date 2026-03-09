@@ -1,6 +1,6 @@
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import { Buffer } from 'buffer';
-import type { AudioTrackBundle } from './audioTrack';
+import type { AudioTrackBundle } from '../services/audioTrack';
 
 export type UploadAudioResult = {
   container: string;
@@ -43,7 +43,12 @@ async function putBytesToSasUrl(sasUrl: string, bytes: Uint8Array, contentType: 
   }
 }
 
-export async function uploadAudioToAzure(localUri: string, sasUploadUrl: string, container: string, blobName: string): Promise<UploadAudioResult> {
+export async function uploadAudioToAzure(
+  localUri: string,
+  sasUploadUrl: string,
+  container: string,
+  blobName: string
+): Promise<UploadAudioResult> {
   const normalizedPath = normalizeFilePath(localUri);
 
   const exists = await ReactNativeBlobUtil.fs.exists(normalizedPath);
