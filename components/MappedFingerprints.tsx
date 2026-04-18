@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, Dimensions, ActivityIndicator, Text, Pressable } from 'react-native';
+import { View, StyleSheet, Dimensions, ActivityIndicator, Text, Pressable, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useLiveLocation from '../util/useLiveLocation';
 import {
@@ -18,6 +18,7 @@ type SavedFingerprintData = {
   humanDescription?: { description: string };
   fingerprintTitle?: { title: string };
   timestamp: string;
+  photoPath: string;
 };
 
 export default function MappedFingerprints() {
@@ -54,6 +55,7 @@ export default function MappedFingerprints() {
               title: p.fingerprintTitle?.title ?? null,
               description: p.humanDescription?.description ?? null,
               timestamp: p.timestamp,
+              photoPath: p.photoPath ?? undefined,
             },
           } as Feature<Point>;
         })
@@ -142,6 +144,15 @@ export default function MappedFingerprints() {
               <Text style={styles.cardText}>{selectedFeature.properties.description}</Text>
             ) : null}
             <Text style={styles.cardSmall}>{new Date(selectedFeature.properties?.timestamp || Date.now()).toLocaleString()}</Text>
+
+{selectedFeature?.properties?.photoPath ? (
+  <Image
+    source={{ uri: 'file://' + selectedFeature.properties.photoPath }}
+    style={{ width: 160, height: 160, marginTop: 10, borderRadius: 10 }}
+    resizeMode="cover"
+  />
+) : null}
+
             <Pressable onPress={() => setSelectedFeature(null)} style={styles.cardClose}>
               <Text style={{ color: '#007aff' }}>Close</Text>
             </Pressable>

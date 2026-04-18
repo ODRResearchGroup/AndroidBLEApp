@@ -1,170 +1,362 @@
 import React, { useEffect, useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  Image,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { StyleSheet, View, Text, ScrollView, Pressable, Button, Alert } from 'react-native';
 import { SensorEvent } from '../types';
-import { DocumentDirectoryPath, writeFile } from 'react-native-fs';
-import Share from 'react-native-share';
+import { SavedFingerprintData, SensorReadings, StoredItem as StoredItemType } from './sharedTypes';
+import ExpandedFingerprintView from '../components/ExpandedFingerprintView';
+import ComparisonView from '../components/ComparisonView';
 
-//cretae state for any amount fo readings, make it unlimited or something
-//then fetch the dtaa depending on what the user has selected. 
-//withing history you could have the function for comparing
-type SavedFingerprintData = {
-  fingerprint: SensorEvent;
-  location: { latitude: number; longitude: number } | null;
-  humanDescription: { description: string };
-    fingerprintTitle: {title: string};
-  timestamp: string; 
-};
-
-type StoredItem = { key: string; data: SavedFingerprintData };
-
+type StoredItem = StoredItemType;
 
 export default function FingerprintsHistory() {
-  const [historical, setHistorical] = useState<SavedFingerprintData[]>([]);
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-
+  const [items, setItems] = useState<StoredItem[]>([]);
+  const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
-    const [items, setItems] = useState<StoredItem[]>([]);
-  // expandedIndex controls single-item expansion
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [showComparison, setShowComparison] = useState(false);
 
-  // --- LOAD FINGERPRINTS ---
+  // Load fingerprints
   useEffect(() => {
     const loadFingerprints = async () => {
       try {
         const keys = await AsyncStorage.getAllKeys();
-        const fingerprintKeys = keys.filter(k => k.startsWith("sensor_fingerprint_"));
-        const savedData = await AsyncStorage.multiGet(fingerprintKeys);
+        const fingerprintKeys = keys.filter(k => k.startsWith('sensor_fingerprint_'));
+        const pairs = await AsyncStorage.multiGet(fingerprintKeys);
 
-        const parsedData = savedData
-          .map(([_, value]) => (value ? JSON.parse(value) : null))
-          .filter(item => item !== null) as SavedFingerprintData[];
+        const parsed: StoredItem[] = pairs
+          .map(([key, value]) => ({ key, data: value ? JSON.parse(value) : null }))
+          .filter(item => item.data !== null) as StoredItem[];
 
-        parsedData.sort(
-          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
-
-        setHistorical(parsedData);
+        parsed.sort((a, b) => new Date(b.data.timestamp).getTime() - new Date(a.data.timestamp).getTime());
+        setItems(parsed);
       } catch (err) {
-        console.error("Error loading fingerprints:", err);
+        console.error('Error loading fingerprints:', err);
       }
     };
 
     loadFingerprints();
   }, []);
 
-	const exportSelected = async () => {
-		try {
-			const selected = items.filter(i => selectedKeys.includes(i.key)).map(i => i.data);
-			if (selected.length === 0) return Alert.alert('No selection', 'Please select fingerprints to export.');
+  // Toggle selection mode
+  const toggleSelectMode = () => {
+    setIsSelectMode(!isSelectMode);
+    setSelectedKeys([]);
+  };
 
-			const filename = `fingerprints_selected_${Date.now()}.json`;
-			const path = `${DocumentDirectoryPath}/${filename}`;
-			await writeFile(path, JSON.stringify(selected, null, 2), 'utf8');
+  // Toggle individual selection
+  const toggleSelect = (key: string) => {
+    setSelectedKeys(prev => {
+      if (prev.includes(key)) {
+        return prev.filter(k => k !== key);
+      }
+      return [...prev, key];
+    });
+  };
 
-			await Share.open({ title: 'Share selected fingerprints', urls: [path], saveToFiles: true, failOnCancel: false });
-		} catch (err: any) {
-			console.error('Export selected failed', err);
-			Alert.alert('Export failed', err?.message || String(err));
-		}
-	};
+  // Handle fingerprint click (browse or select)
+  const handleFingerprintPress = (index: number, key: string) => {
+    if (isSelectMode) {
+      toggleSelect(key);
+    } else {
+      setExpandedIndex(index);
+    }
+  };
+
+  // If showing comparison, render ComparisonView
+  if (showComparison) {
+    const selectedItems = items.filter(i => selectedKeys.includes(i.key));
+    return (
+      <ComparisonView
+        selectedItems={selectedItems}
+        onBack={() => setShowComparison(false)}
+      />
+    );
+  }
+
+  // If expanded, show detail view
+  if (expandedIndex !== null && items[expandedIndex]) {
+    return (
+      <ExpandedFingerprintView
+        data={items[expandedIndex].data}
+        onBack={() => setExpandedIndex(null)}
+      />
+    );
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Saved Fingerprints</Text>
-        <Button title="Export Selected" onPress={exportSelected} />
+    <View style={styles.container}>
+      {/* Header Section */}
+      <View style={styles.header}>
+        
+        
 
-      {/* Note: selection and comparison moved to Analysis tab */}
-
-      {/* comparison moved to Analysis tab */}
-
-      {/* --- LIST OF FINGERPRINTS --- */}
-      {expandedIndex === null && historical.map((saved, idx) => {
-        // If a card is expanded, render only that expanded view below (outside the map of items)
-        return (
-          <Pressable
-            key={idx}
-            onPress={() => setExpandedIndex(idx)}
-            onLongPress={() => setExpandedIndex(idx)}
-          >
-            <View style={[styles.item, styles.card]}>
-              <Text style={styles.cardTitle}>{saved.fingerprintTitle?.title || "Fingerprint"}</Text>
-              <Text style={styles.cardText}>{saved.humanDescription?.description || "Description"}</Text>
-              <Text style={styles.cardSmall}>{new Date(saved.timestamp).toLocaleString()}</Text>
-            </View>
-          </Pressable>
-        );
-      })}
-
-      {/* Expanded single-fingerprint view */}
-      {expandedIndex !== null && historical[expandedIndex] && (
-        <View style={styles.expandedWrap}>
-          <View style={styles.expandedCard}>
-            <Pressable onPress={() => setExpandedIndex(null)} style={styles.backButton}>
-              <Text style={styles.backText}>← Back</Text>
+        <View style={styles.headerButtons}>
+          {!isSelectMode ? (
+            <Pressable style={styles.selectButton} onPress={toggleSelectMode}>
+              <Text style={styles.selectButtonText}>Select</Text>
             </Pressable>
-
-            <Text style={[styles.cardTitle, { marginTop: 8 }]}>
-              {historical[expandedIndex].fingerprintTitle?.title || 'Fingerprint'}
-            </Text>
-            <Text style={styles.cardText}>{historical[expandedIndex].humanDescription?.description}</Text>
-
-            <Text style={styles.sectionTitle}>Readings</Text>
-            {Object.entries(historical[expandedIndex].fingerprint?.olfactoryData?.readings || {}).map(([key, value], i) => (
-              <Text key={key}>
-                {i + 1}. {key}: {value.toFixed(4)}
-              </Text>
-            ))}
-
-            <Text style={styles.cardSmall}>{new Date(historical[expandedIndex].timestamp).toLocaleString()}</Text>
-            <Text style={styles.cardSmall}>
-              Location: {historical[expandedIndex].location?.latitude ?? '-'} {historical[expandedIndex].location?.longitude ?? ''}
-            </Text>
-          </View>
+          ) : (
+            <>
+              <Pressable style={styles.cancelButton} onPress={toggleSelectMode}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.analyseButton, selectedKeys.length < 2 && styles.disabledButton]}
+                onPress={() => setShowComparison(true)}
+                disabled={selectedKeys.length < 2}
+              >
+                <Text style={styles.analyseButtonText}>analyse</Text>
+              </Pressable>
+            </>
+          )}
         </View>
-      )}
-    </ScrollView>
+      </View>
+
+      {/* Fingerprints List */}
+      <ScrollView style={styles.listSection} contentContainerStyle={styles.listContent}>
+        {items.map((item, idx) => {
+          const isSelected = selectedKeys.includes(item.key);
+
+          return (
+
+            
+            <Pressable
+              key={item.key}
+              onPress={() => handleFingerprintPress(idx, item.key)}
+              style={[
+                styles.fingerprintCard,
+                isSelectMode && isSelected && styles.selectedCard,
+              ]}
+            >
+              <View style={styles.cardContent}>
+                {/* Selection Circle (only in select mode) */}
+                {isSelectMode && (
+                  <View style={styles.selectionCircle}>
+                    {isSelected ? (
+                      <View style={styles.selectedCircle}>
+                        <View style={styles.selectedCircleInner} />
+                      </View>
+                    ) : (
+                      <View style={styles.unselectedCircle} />
+                    )}
+                  </View>
+                )}
+
+                {/* Text content */}
+                <View style={styles.textContent}>
+                  <Text style={styles.cardTitle}>
+                    {item.data.fingerprintTitle?.title || `Fingerprint 01`}
+                  </Text>
+                  <Text style={styles.cardDescription}>
+                    {item.data.humanDescription?.description || 'Capture fingerprints and view the live data'}
+                  </Text>
+                  {item.data.deltaReadings && (
+                    <Text style={styles.deltaText}>
+                      Δ CH4: {Number(item.data.deltaReadings.CH4).toFixed(4)}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Thumbnail image */}
+                <View style={styles.thumbnailContainer}>
+                  {item.data.photoPath ? (
+                    <Image
+                      source={{ uri: `file://${item.data.photoPath}` }}
+                      style={styles.thumbnail}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.thumbnailPlaceholder} />
+                  )}
+                </View>
+              </View>
+            </Pressable>
+          );
+        })}
+
+        {items.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No fingerprints saved yet</Text>
+            <Text style={styles.emptySubtext}>Create a fingerprint to get started</Text>
+          </View>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
+const GUTTER = 20;
+const MARGIN = 20;
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    flex: 1,
+    backgroundColor: '#fff',
   },
-  title: {
-    fontSize: 18,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: MARGIN,
+    paddingVertical: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+  },
+  backText: {
+    fontSize: 24,
+    color: '#000',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  selectButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#000',
+  },
+  selectButtonText: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: '500',
+  },
+  cancelButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#000',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: '500',
+  },
+  analyseButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#000',
+  },
+  analyseButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  disabledButton: {
+    opacity: 0.4,
+  },
+  listSection: {
+    flex: 1,
+  },
+  listContent: {
+    paddingHorizontal: MARGIN,
+    paddingBottom: 100,
+  },
+  fingerprintCard: {
+    marginBottom: GUTTER,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  selectedCard: {
+    backgroundColor: '#f0f0f0',
+    borderColor: '#000',
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    position: 'relative',
+  },
+  selectionCircle: {
+    marginRight: 12,
+  },
+  unselectedCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#666',
+  },
+  selectedCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedCircleInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#fff',
+  },
+  textContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  cardTitle: {
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
+    color: '#000',
+    marginBottom: 6,
   },
-  item: {
-    marginBottom: 24,
+  cardDescription: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
   },
-    card: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    padding: 12,
+  deltaText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#333',
+    fontWeight: '600',
+  },
+  thumbnailContainer: {
+    width: 60,
+    height: 60,
     borderRadius: 8,
-    width: '90%',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
+    overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
   },
-    cardTitle: { fontSize: 16, fontWeight: '600', marginBottom: 6 },
-      cardText: { fontSize: 14, marginBottom: 6 },
-        cardSmall: { fontSize: 12, color: '#666' },
-
-        expandedWrap: { width: '100%', alignItems: 'center', marginTop: 12 },
-        expandedCard: {
-          width: '100%',
-          backgroundColor: 'rgba(255,255,255,0.98)',
-          padding: 16,
-          borderRadius: 8,
-          shadowColor: '#000',
-          shadowOpacity: 0.08,
-          shadowRadius: 6,
-          elevation: 3,
-        },
-        backButton: { padding: 6 },
-        backText: { color: '#007aff', fontSize: 14 },
-        sectionTitle: { fontSize: 15, fontWeight: '600', marginTop: 10, marginBottom: 6 },
-      });
+  thumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbnailPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#e0e0e0',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+  },
+});

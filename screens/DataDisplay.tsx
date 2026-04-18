@@ -1,67 +1,128 @@
+import React from 'react';
+import { View, Text, StyleSheet, Pressable, Image, ImageBackground } from 'react-native';
+import { NavigationProp } from '@react-navigation/native';
 
-import React, { useState } from 'react';
-import { StyleSheet, View, SafeAreaView, Pressable, Text, Button } from 'react-native';
-import LiveData from '../components/LiveData';
-import FingerprintsHistory from '../components/FingerprintsHistory';
-import Analysis from '../components/analysis';
+interface DataDisplayProps {
+  navigation: NavigationProp<any>;
+}
 
-const DataDisplay: React.FC = () => {
-  const [selectedTab, setSelectedTab] = useState<null | 'live' | 'history' | 'analysis'>(null);
-
+export default function DataDisplay({ navigation }: DataDisplayProps) {
   return (
-    <SafeAreaView style={styles.container}>
-      {selectedTab === null ? (
-        <View style={styles.cards}>
-          <Pressable style={styles.card} onPress={() => setSelectedTab('live')}>
-            <Text style={styles.cardTitle}>Live Data</Text>
-            <Text style={styles.cardDesc}>Live visualization and fingerprint capture.</Text>
-          </Pressable>
-
-          <Pressable style={styles.card} onPress={() => setSelectedTab('history')}>
-            <Text style={styles.cardTitle}>History</Text>
-            <Text style={styles.cardDesc}>Browse saved fingerprints.</Text>
-          </Pressable>
-
-          <Pressable style={styles.card} onPress={() => setSelectedTab('analysis')}>
-            <Text style={styles.cardTitle}>Analysis</Text>
-            <Text style={styles.cardDesc}>Analyse fingerprints </Text>
-          </Pressable>
+    <View style={styles.container}>
+        
+      <Text style={styles.header}>What's for today?</Text>
+      {/* Live Fingerprinting Card */}
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate('LiveData')}
+      >
+        <View style={styles.cardContent}>
+          <Text style={styles.cardTitle}>Live Fingerprinting</Text>
+          <Text style={styles.cardDescription}>
+            Capture fingerprints{'\n'}and view the live data
+          </Text>
         </View>
-      ) : (
-        <View style={styles.expanded}> 
-          <View style={styles.toolbar}>
-            <Button title="Back" onPress={() => setSelectedTab(null)} />
-          </View>
-          <View style={styles.content}>
-            {selectedTab === 'live' && <LiveData />}
-            {selectedTab === 'history' && <FingerprintsHistory />}
-            {selectedTab === 'analysis' && <Analysis />}
-          </View>
+        <View style={styles.iconContainer}>
+    <Image
+    source={require('../pics/fingerprint_single_frame.jpg')}
+style={styles.iconContainer}
+    resizeMode="contain"
+  />
         </View>
-      )}
-    </SafeAreaView>
+      </Pressable>
+
+      {/* Past Fingerprints Card */}
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate('History')}
+      >
+        <View style={styles.cardContent}>
+          <Text style={styles.cardTitle}>Past fingerprints</Text>
+          <Text style={styles.cardDescription}>
+            here you can find your{'\n'}previous fingerprints{'\n'}and analyse
+          </Text>
+        </View>
+        <View style={styles.iconContainer}>
+     <Image
+    source={require('../pics/fingerprint_frame.jpg')}
+style={styles.iconContainer}
+    resizeMode="contain"
+  />
+        </View>
+      </Pressable>
+
+      {/* Mapped Fingerprints Card */}
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate('Map')}
+      >
+        <View style={styles.cardContent}>
+          <Text style={styles.cardTitle}>Mapped Fingerprints</Text>
+          <Text style={styles.cardDescription}>
+            here you will find the{'\n'}map feature
+          </Text>
+        </View>
+        <View style={styles.iconContainer}>
+      <Image
+    source={require('../pics/map_frame.jpg')}
+style={styles.iconContainer}
+    resizeMode="contain"
+  />
+        </View>
+      </Pressable>
+    </View>
   );
-};
+}
+
+const MARGIN = 20;
+const GUTTER = 20;
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  tabBar: { flexDirection: 'row', justifyContent: 'space-around', padding: 8 },
-  content: { flex: 1 },
-  cards: { padding: 20 },
-  card: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+  container: {
+    flex: 1,
+resizeMode: 'cover',
+    paddingHorizontal: MARGIN,
+    paddingTop: 60,
   },
-  cardTitle: { fontSize: 18, fontWeight: '600', marginBottom: 6 },
-  cardDesc: { fontSize: 13, color: '#444' },
-  expanded: { flex: 1 },
-  toolbar: { padding: 8 },
-});
+  header: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 40,
+    textAlign: 'center',
+  },
+  card: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    marginBottom: GUTTER,
 
-export default DataDisplay;
+    borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: '#000',
+ 
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+  },
+  cardDescription: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+
+        borderWidth: 0.5,
+    borderColor: '#6b4f3eff',
+  },
+});
