@@ -264,7 +264,7 @@ export default function LiveData() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={{ backgroundColor: '#fff' }} contentContainerStyle={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <FingerprintModal
           visible={showFingerprintModal}

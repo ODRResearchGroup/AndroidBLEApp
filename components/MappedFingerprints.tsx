@@ -1,114 +1,129 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, Dimensions, ActivityIndicator, Text, Pressable, Image } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import useLiveLocation from '../util/useLiveLocation';
-import {
-  MapView,
-  Camera,
-  ShapeSource,
-  CircleLayer,
-} from '@maplibre/maplibre-react-native';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { MapView, Camera, ShapeSource, CircleLayer } from '@maplibre/maplibre-react-native';
 import { FeatureCollection, Feature, Point } from 'geojson';
+import useLiveLocation from '../util/useLiveLocation';
+import { listSensorRecords, SensorRecord } from '../services/db';
+import ExpandedFingerprintView from './ExpandedFingerprintView';
+import { SavedFingerprintData } from './sharedTypes';
 
-const { width } = Dimensions.get('window');
-
-type SavedFingerprintData = {
-  fingerprint: any;
-  location: { latitude: number; longitude: number } | null;
-  humanDescription?: { description: string };
-  fingerprintTitle?: { title: string };
-  timestamp: string;
-  photoPath: string;
-};
+function recordToLegacy(record: SensorRecord): SavedFingerprintData {
+  return {
+    fingerprint: {
+      type: 'sensor_reading',
+      timestamp: new Date(record.recordedAt),
+      source: 'BLE Device',
+      olfactoryData: {
+        readings: {
+          CH4: record.ch4, NH3: record.nh3, HCHO: record.hcho, VOC: record.voc,
+          Odour: record.odour, H2S: record.h2s, Etoh: record.etoh, NO2: record.no2,
+        },
+        units: {
+          CH4: 'ppm', NH3: 'ppm', HCHO: 'ppm', VOC: 'ppm',
+          Odour: 'a.u.', H2S: 'ppm', Etoh: 'ppm', NO2: 'ppm',
+        },
+      },
+    },
+    location: (record.latitude !== null && record.longitude !== null)
+      ? { latitude: record.latitude, longitude: record.longitude }
+      : null,
+    fingerprintTitle: { title: record.title },
+    humanDescription: { description: record.description },
+    photoPath: record.photoPath ?? undefined,
+    timestamp: new Date(record.recordedAt).toISOString(),
+  };
+}
 
 export default function MappedFingerprints() {
-  const [features, setFeatures] = useState<FeatureCollection<Point> | null>(null);
+  const [records, setRecords] = useState<SensorRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedRecord, setSelectedRecord] = useState<SensorRecord | null>(null);
   const cameraRef = useRef<React.ElementRef<typeof Camera> | null>(null);
   const { location } = useLiveLocation();
-  const [selectedFeature, setSelectedFeature] = useState<Feature<Point> | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      const keys = await AsyncStorage.getAllKeys();
-      const fingerprintKeys = keys.filter(k => k.startsWith('sensor_fingerprint_'));
-      const pairs = await AsyncStorage.multiGet(fingerprintKeys);
-
-      const parsed = pairs
-        .map(([_, v]) => {
-          if (!v) return null;
-          try {
-            return JSON.parse(v) as SavedFingerprintData;
-          } catch (e) {
-            return null;
-          }
-        })
-        .filter(Boolean) as SavedFingerprintData[];
-
-      const pts: Feature<Point>[] = parsed
-        .map(p => {
-          const loc = p.location;
-          if (!loc) return null;
-          return {
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [loc.longitude, loc.latitude] },
-            properties: {
-              title: p.fingerprintTitle?.title ?? null,
-              description: p.humanDescription?.description ?? null,
-              timestamp: p.timestamp,
-              photoPath: p.photoPath ?? undefined,
-            },
-          } as Feature<Point>;
-        })
-        .filter(Boolean) as Feature<Point>[];
-
-      const fc: FeatureCollection<Point> = { type: 'FeatureCollection', features: pts };
-      setFeatures(fc);
-
-      // center camera on first point if available (initial load)
-      if (pts.length && cameraRef.current && !location) {
-        const [lon, lat] = pts[0].geometry.coordinates;
-        cameraRef.current.setCamera({ centerCoordinate: [lon, lat], zoomLevel: 10 });
-      }
-    };
-
-    load().catch(err => console.warn('Failed to load fingerprints for map', err));
+  const loadRecords = useCallback(async () => {
+    try {
+      const rows = await listSensorRecords(200);
+      setRecords(rows);
+    } catch (e) {
+      console.warn('Failed to load fingerprints for map', e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  if (!features) {
+  useFocusEffect(useCallback(() => { loadRecords(); }, [loadRecords]));
+
+  useEffect(() => {
+    if (records.length && cameraRef.current && !location) {
+      const first = records.find(r => r.latitude !== null && r.longitude !== null);
+      if (first) {
+        cameraRef.current.setCamera({
+          centerCoordinate: [first.longitude!, first.latitude!],
+          zoomLevel: 10,
+        });
+      }
+    }
+  }, [records]);
+
+  if (selectedRecord) {
+    const tags = selectedRecord.tagsJson
+      ? (() => { try { return JSON.parse(selectedRecord.tagsJson!); } catch { return []; } })()
+      : [];
     return (
-      <View style={[styles.fullscreen, styles.center]}>
+      <ExpandedFingerprintView
+        data={recordToLegacy(selectedRecord)}
+        sensorRecordId={selectedRecord.id}
+        initialTags={tags}
+        onBack={() => { setSelectedRecord(null); loadRecords(); }}
+      />
+    );
+  }
+
+  const features: FeatureCollection<Point> = {
+    type: 'FeatureCollection',
+    features: records
+      .filter(r => r.latitude !== null && r.longitude !== null)
+      .map(r => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [r.longitude!, r.latitude!] },
+        properties: { id: r.id },
+      } as Feature<Point>)),
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.fullscreen, styles.center]}>
         <ActivityIndicator size="large" />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.fullscreen}>
-      <MapView style={styles.map} mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json">
+    <SafeAreaView style={styles.fullscreen}>
+      <MapView
+        style={styles.map}
+        mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+      >
         <Camera ref={cameraRef} />
-        {/* user live location (if available) */}
+
         {location && (
           <ShapeSource
             id="user-location"
             shape={{
               type: 'FeatureCollection',
-              features: [
-                {
-                  type: 'Feature',
-                  geometry: { type: 'Point', coordinates: [location.longitude, location.latitude] },
-                  properties: {},
-                },
-              ],
+              features: [{
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [location.longitude, location.latitude] },
+                properties: {},
+              }],
             }}
           >
             <CircleLayer
               id="user-point"
-              style={{
-                circleColor: '#007aff',
-                circleRadius: 8,
-                circleStrokeWidth: 2,
-                circleStrokeColor: '#fff',
-              }}
+              style={{ circleColor: '#007aff', circleRadius: 8, circleStrokeWidth: 2, circleStrokeColor: '#fff' }}
             />
           </ShapeSource>
         )}
@@ -118,78 +133,39 @@ export default function MappedFingerprints() {
           shape={features}
           onPress={(ev: any) => {
             const f = ev?.features?.[0] as Feature<Point> | undefined;
-            if (f) {
-              setSelectedFeature(f);
+            if (!f) return;
+            const id = f.properties?.id as string;
+            const record = records.find(r => r.id === id);
+            if (record) {
               const [lon, lat] = f.geometry.coordinates;
-              if (cameraRef.current) cameraRef.current.setCamera({ centerCoordinate: [lon, lat] });
+              cameraRef.current?.setCamera({ centerCoordinate: [lon, lat] });
+              setSelectedRecord(record);
             }
           }}
         >
           <CircleLayer
             id="fingerprint-points"
-            style={{
-              circleColor: '#ff7043',
-              circleRadius: 6,
-              circleStrokeWidth: 2,
-              circleStrokeColor: '#fff',
-            }}
+            style={{ circleColor: '#ff7043', circleRadius: 10, circleStrokeWidth: 2, circleStrokeColor: '#fff' }}
           />
         </ShapeSource>
       </MapView>
-      {selectedFeature && (
-        <View style={styles.cardContainer} pointerEvents="box-none">
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{selectedFeature.properties?.title ?? 'Fingerprint'}</Text>
-            {selectedFeature.properties?.description ? (
-              <Text style={styles.cardText}>{selectedFeature.properties.description}</Text>
-            ) : null}
-            <Text style={styles.cardSmall}>{new Date(selectedFeature.properties?.timestamp || Date.now()).toLocaleString()}</Text>
 
-{selectedFeature?.properties?.photoPath ? (
-  <Image
-    source={{ uri: 'file://' + selectedFeature.properties.photoPath }}
-    style={{ width: 160, height: 160, marginTop: 10, borderRadius: 10 }}
-    resizeMode="cover"
-  />
-) : null}
-
-            <Pressable onPress={() => setSelectedFeature(null)} style={styles.cardClose}>
-              <Text style={{ color: '#007aff' }}>Close</Text>
-            </Pressable>
-          </View>
+      {features.features.length === 0 && (
+        <View style={styles.emptyOverlay}>
+          <Text style={styles.emptyText}>No fingerprints with location yet</Text>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  fullscreen: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
+  fullscreen: { flex: 1, width: '100%', height: '100%', backgroundColor: '#fff' },
   map: { flex: 1 },
   center: { justifyContent: 'center', alignItems: 'center' },
-  cardContainer: {
-    position: 'absolute',
-    bottom: 24,
-    left: 12,
-    right: 12,
+  emptyOverlay: {
+    position: 'absolute', bottom: 40, left: 0, right: 0,
     alignItems: 'center',
   },
-  card: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    padding: 12,
-    borderRadius: 8,
-    width: '90%',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  cardTitle: { fontSize: 16, fontWeight: '600', marginBottom: 6 },
-  cardText: { fontSize: 14, marginBottom: 6 },
-  cardSmall: { fontSize: 12, color: '#666' },
-  cardClose: { marginTop: 8, alignSelf: 'flex-end' },
+  emptyText: { color: '#666', fontSize: 14 },
 });

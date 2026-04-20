@@ -1,36 +1,38 @@
-import React, { useRef, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import {
   Camera,
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
 
-interface CameraModalProps {
-  visible: boolean;
+interface CameraCaptureProps {
   onClose: () => void;
   onPhotoTaken: (photoPath: string) => void;
 }
 
-export default function CameraCapture({ visible, onClose, onPhotoTaken }: CameraModalProps) {
+export default function CameraCapture({ onClose, onPhotoTaken }: CameraCaptureProps) {
   const cameraRef = useRef<Camera>(null);
   const device = useCameraDevice("back");
   const { hasPermission, requestPermission } = useCameraPermission();
   const [isCapturing, setIsCapturing] = useState(false);
 
+  useEffect(() => {
+    if (!hasPermission) {
+      requestPermission();
+    }
+  }, []);
+
   const takePhoto = async () => {
-    if (isCapturing) return;
-    
+    if (isCapturing || !cameraRef.current) return;
     try {
       setIsCapturing(true);
-      if (cameraRef.current) {
-        const photo = await cameraRef.current.takePhoto({
-          flash: "auto",
-          enableShutterSound: true,
-        });
-        onPhotoTaken(photo.path);
-        onClose();
-      }
+      const photo = await cameraRef.current.takePhoto({
+        flash: "auto",
+        enableShutterSound: true,
+      });
+      onPhotoTaken(photo.path);
+      onClose();
     } catch (error) {
       console.error("Failed to take photo:", error);
     } finally {
@@ -38,75 +40,55 @@ export default function CameraCapture({ visible, onClose, onPhotoTaken }: Camera
     }
   };
 
-  const handleRequestPermission = async () => {
-    const permission = await requestPermission();
-    if (!permission) {
-      onClose();
-    }
-  };
+  if (!hasPermission) {
+    return (
+      <View style={styles.permissionView}>
+        <Text style={styles.permissionText}>
+          Camera permission is required to take photos
+        </Text>
+        <TouchableOpacity onPress={requestPermission} style={styles.permissionButton}>
+          <Text style={styles.permissionButtonText}>Grant Permission</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onClose} style={[styles.permissionButton, styles.cancelButton]}>
+          <Text style={styles.permissionButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!device) {
+    return (
+      <View style={styles.permissionView}>
+        <Text style={styles.permissionText}>No camera device found</Text>
+        <TouchableOpacity onPress={onClose} style={styles.permissionButton}>
+          <Text style={styles.permissionButtonText}>Close</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={false}
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
-        {!hasPermission ? (
-          <View style={styles.permissionView}>
-            <Text style={styles.permissionText}>
-              Camera permission is required to take photos
-            </Text>
-            <TouchableOpacity
-              onPress={handleRequestPermission}
-              style={styles.permissionButton}
-            >
-              <Text style={styles.permissionButtonText}>Grant Permission</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={onClose}
-              style={[styles.permissionButton, styles.cancelButton]}
-            >
-              <Text style={styles.permissionButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        ) : !device ? (
-          <View style={styles.permissionView}>
-            <Text style={styles.permissionText}>No camera device found</Text>
-            <TouchableOpacity onPress={onClose} style={styles.permissionButton}>
-              <Text style={styles.permissionButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            <Camera
-              ref={cameraRef}
-              photo={true}
-              device={device}
-              isActive={visible && !!device}
-              style={StyleSheet.absoluteFill}
-            />
-            
-            {/* Close button */}
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-
-            {/* Capture button */}
-            <View style={styles.controls}>
-              <TouchableOpacity
-                onPress={takePhoto}
-                style={styles.captureButton}
-                disabled={isCapturing}
-              >
-                <View style={styles.captureButtonInner} />
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
+    <View style={styles.container}>
+      <Camera
+        ref={cameraRef}
+        photo={true}
+        device={device}
+        isActive={true}
+        style={StyleSheet.absoluteFill}
+      />
+      <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+        <Text style={styles.closeButtonText}>✕</Text>
+      </TouchableOpacity>
+      <View style={styles.controls}>
+        <TouchableOpacity
+          onPress={takePhoto}
+          style={styles.captureButton}
+          disabled={isCapturing}
+        >
+          <View style={styles.captureButtonInner} />
+        </TouchableOpacity>
       </View>
-    </Modal>
+    </View>
   );
 }
 

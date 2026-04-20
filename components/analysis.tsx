@@ -1,20 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Button, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DocumentDirectoryPath, writeFile } from 'react-native-fs';
-import Share from 'react-native-share';
-import { SensorEvent } from '../types';
-import CustomRadarChart from '../components/CustomRadarChart'; // ← Import the new component
-
-type SavedFingerprintData = {
-	fingerprint: SensorEvent;
-	location: { latitude: number; longitude: number } | null;
-	humanDescription: { description: string };
-	fingerprintTitle: { title: string };
-	timestamp: string;
-};
+import { SafeAreaView } from 'react-native-safe-area-context';
+import CustomRadarChart from '../components/CustomRadarChart';
+import { listSensorRecords, SensorRecord } from '../services/db';
+import { exportAllData } from '../services/exportService';
+import { SavedFingerprintData } from './sharedTypes';
 
 type StoredItem = { key: string; data: SavedFingerprintData };
+
+function recordToLegacy(record: SensorRecord): SavedFingerprintData {
+  return {
+    fingerprint: {
+      olfactoryData: {
+        readings: {
+          CH4: record.ch4, NH3: record.nh3, HCHO: record.hcho, VOC: record.voc,
+          Odour: record.odour, H2S: record.h2s, Etoh: record.etoh, NO2: record.no2,
+        },
+      },
+    } as any,
+    location: record.latitude != null && record.longitude != null
+      ? { latitude: record.latitude, longitude: record.longitude }
+      : null,
+    humanDescription: { description: record.description ?? '' },
+    fingerprintTitle: { title: record.title ?? 'Fingerprint' },
+    timestamp: new Date(record.recordedAt).toISOString(),
+  } as SavedFingerprintData;
+}
 
 // Consistent sensor order and labels matching LiveData
 const SENSOR_MAP = [
@@ -43,24 +54,15 @@ export default function Analysis() {
 	const [showComparison, setShowComparison] = useState(false);
 
 	useEffect(() => {
-		const load = async () => {
-			try {
-				const keys = await AsyncStorage.getAllKeys();
-				const fingerprintKeys = keys.filter(k => k.startsWith('sensor_fingerprint_'));
-				const pairs = await AsyncStorage.multiGet(fingerprintKeys);
-
-				const parsed: StoredItem[] = pairs
-					.map(([k, v]) => ({ key: k, data: v ? JSON.parse(v) : null }))
-					.filter(p => p.data !== null) as StoredItem[];
-
-				parsed.sort((a, b) => new Date(b.data.timestamp).getTime() - new Date(a.data.timestamp).getTime());
+		listSensorRecords(500)
+			.then(records => {
+				const parsed: StoredItem[] = records.map(r => ({
+					key: r.id,
+					data: recordToLegacy(r),
+				}));
 				setItems(parsed);
-			} catch (err) {
-				console.error('Failed to load fingerprints for analysis', err);
-			}
-		};
-
-		load();
+			})
+			.catch(err => console.error('Failed to load sensor records for analysis', err));
 	}, []);
 
 	const toggleSelect = (key: string) => {
@@ -86,23 +88,11 @@ export default function Analysis() {
 		});
 	};
 
-	const exportSelected = async () => {
+	const handleExportAll = async () => {
 		try {
-			const selected = items.filter(i => selectedKeys.includes(i.key)).map(i => i.data);
-			if (selected.length === 0) return Alert.alert('No selection', 'Please select fingerprints to export.');
-
-			const filename = `fingerprints_selected_${Date.now()}.json`;
-			const path = `${DocumentDirectoryPath}/${filename}`;
-			await writeFile(path, JSON.stringify(selected, null, 2), 'utf8');
-
-			await Share.open({ 
-				title: 'Share selected fingerprints', 
-				url: `file://${path}`, 
-				saveToFiles: true, 
-				failOnCancel: false 
-			});
+			await exportAllData();
 		} catch (err: any) {
-			console.error('Export selected failed', err);
+			console.error('Export failed', err);
 			Alert.alert('Export failed', err?.message || String(err));
 		}
 	};
@@ -132,14 +122,14 @@ export default function Analysis() {
 	}));
 
 	return (
-		<View style={styles.container}>
+		<SafeAreaView style={styles.container}>
 			<Text style={styles.title}>Analysis</Text>
 			<Text style={styles.note}>Select fingerprints to compare.</Text>
 			<Text style={styles.badge}>Selected: {selectedKeys.length}</Text>
 
 			<View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
 				<Button title="Clear" onPress={clearSelection} disabled={selectedKeys.length === 0} />
-				<Button title="Export Selected" onPress={exportSelected} disabled={selectedKeys.length === 0} />
+				<Button title="Export All" onPress={handleExportAll} />
 				<Button 
 					title="Compare" 
 					onPress={() => setShowComparison(true)} 
@@ -247,7 +237,7 @@ export default function Analysis() {
 					);
 				})}
 			</ScrollView>
-		</View>
+		</SafeAreaView>
 	);
 }
 

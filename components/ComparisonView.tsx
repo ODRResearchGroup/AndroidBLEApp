@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Button, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomRadarChart from '../components/CustomRadarChart';
 import { SavedFingerprintData } from './sharedTypes';
 import { DocumentDirectoryPath, writeFile } from 'react-native-fs';
@@ -83,7 +84,7 @@ export default function ComparisonView({ selectedItems, onBack }: ComparisonView
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={onBack} style={styles.backButton}>
@@ -120,7 +121,7 @@ export default function ComparisonView({ selectedItems, onBack }: ComparisonView
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

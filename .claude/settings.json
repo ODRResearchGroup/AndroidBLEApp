@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -v \"^$\")",
+      "Bash(npx react-native *)",
+      "Bash(xcodebuild -workspace BLEGPSApp.xcworkspace -scheme BLEGPSApp -configuration Debug -destination \"id=00008110-000619412283401E\" build)",
+      "Bash(pkill -f xcodebuild)"
+    ]
+  }
+}

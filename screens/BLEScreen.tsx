@@ -92,7 +92,7 @@ const BLELoggerApp = () => {
         <View style={styles.header}>
           <Text style={styles.title}>eNose Connection</Text>
           <Text style={styles.subtitle}>
-            Connect to device under the{'\n'}name of esp32
+            Connect to device under the{'\n'}name of Brian
           </Text>
         </View>
 
@@ -162,7 +162,7 @@ const BLELoggerApp = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-     backgroundColor: '#fdfcfbff',
+    backgroundColor: '#fff',
   },
   scrollContent: {
     padding: 20,
