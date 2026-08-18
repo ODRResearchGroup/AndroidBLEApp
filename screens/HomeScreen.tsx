@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, Button} from 'react-native';
+import {Button, Text, View} from 'react-native';
 
 type Props = {navigation: any};
 
@@ -8,15 +8,8 @@ type Props = {navigation: any};
 export default function HomeScreen({navigation}: Props) {
   return (
     <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-      <Text>Home Screen</Text>
-      <Button
-        title="Connect Device"
-        onPress={() => navigation.navigate('Device')}
-      />
-      <Button
-        title="Data Display"
-        onPress={() => navigation.navigate('Data Display')}
-      />
+      <Text>Lets Get Started!</Text>
+      <Button title="Live Data" onPress={() => navigation.navigate('LiveData')} />
     </View>
   );
 }

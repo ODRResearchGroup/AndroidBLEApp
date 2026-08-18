@@ -79,7 +79,7 @@ android {
 
     namespace "com.blegpsapp"
     defaultConfig {
-        applicationId "com.blegpsapp"
+        applicationId "com.blegpsapp02"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

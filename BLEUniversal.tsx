@@ -10,13 +10,11 @@ const eventEmitter: AppEventEmitter = mitt();
 // Export the event emitter so other components can use it
 export {eventEmitter};
 
-//This is your BLE manager + context provider
-
 type BLEContextType = {
   manager: BleManager;
   devices: Device[];
   connectedDevice: Device | null;
-  characteristicValues: {[key: string]: number}; // Changed from string to number
+  characteristicValues: {[key: string]: number};
   scanForDevices: () => void;
   connectToDevice: (device: Device) => Promise<void>;
   enableNotifications: (
@@ -27,7 +25,7 @@ type BLEContextType = {
       label: string;
     }[],
   ) => Promise<void>;
-  eventEmitter: AppEventEmitter; // Expose event emitter
+  eventEmitter: AppEventEmitter;
 };
 
 const BLEContext = createContext<BLEContextType | undefined>(undefined);
@@ -38,7 +36,7 @@ export const BLEProvider = ({children}: {children: React.ReactNode}) => {
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [characteristicValues, setCharacteristicValues] = useState<{
     [key: string]: number;
-  }>({}); // Changed from string to number
+  }>({});
 
   useEffect(() => {
     requestPermissions();
@@ -74,7 +72,7 @@ export const BLEProvider = ({children}: {children: React.ReactNode}) => {
 
   // Scan for devices
   const scanForDevices = () => {
-    setDevices([]); // reset before scanning
+    setDevices([]);
 
     manager.startDeviceScan(
       null,
@@ -153,23 +151,40 @@ export const BLEProvider = ({children}: {children: React.ReactNode}) => {
 
             const rawValue = characteristic?.value ?? '';
 
-            // Decode base64 -> float32
+            // Decode base64 -> float32 (ESP32 sends 4-byte float little-endian)
             const base64ToFloat32 = (base64String: string): number => {
-              const binary = atob(base64String);
-              const bytes = new Uint8Array(binary.length);
-              for (let i = 0; i < binary.length; i++) {
-                bytes[i] = binary.charCodeAt(i);
+              try {
+                let bytes: Uint8Array;
+
+                if (typeof atob === 'function') {
+                  const binary = atob(base64String);
+                  bytes = new Uint8Array(binary.length);
+                  for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                  }
+                } else if (typeof Buffer !== 'undefined') {
+                  const buf = Buffer.from(base64String, 'base64');
+                  // create a Uint8Array view over the buffer
+                  bytes = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+                } else {
+                  console.warn('No base64 decoder available in this environment');
+                  return 0;
+                }
+
+                const view = new DataView(bytes.buffer, bytes.byteOffset || 0, bytes.byteLength);
+                return view.getFloat32(0, true);
+              } catch (err) {
+                console.error('Base64->float decode error:', err);
+                return 0;
               }
-              const view = new DataView(bytes.buffer);
-              return view.getFloat32(0, true);
             };
 
-            const floatValue = base64ToFloat32(rawValue);
+            const voltageValue = base64ToFloat32(rawValue);
 
-            // Update local state for UI
+            // Update local state for UI - store raw value directly
             setCharacteristicValues(prev => ({
               ...prev,
-              [label]: floatValue, // Store as number, not string
+              [label]: voltageValue,
             }));
 
             // Emit BLE data updated event for InfluxDB integration
@@ -180,13 +195,13 @@ export const BLEProvider = ({children}: {children: React.ReactNode}) => {
               serviceUUID,
               characteristicUUID,
               rawValue,
-              decodedValue: floatValue,
+              decodedValue: voltageValue,
               source: device.name || 'Unknown Device',
             };
 
             eventEmitter.emit('ble_data_updated', bleEvent);
 
-            console.log(`${label}: ${floatValue}`);
+            console.log(`${label}: ${voltageValue}`);
           },
         );
       } catch (error) {

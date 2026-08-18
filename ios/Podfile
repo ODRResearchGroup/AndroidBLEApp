@@ -32,5 +32,20 @@ target 'BLEGPSApp' do
       # :ccache_enabled => true
     )
     $MLRN.post_install(installer)
+
+    # Fix RNZipArchive per-file COMPILER_FLAGS: -GCC_PREPROCESSOR_DEFINITIONS="X Y"
+    # is invalid clang syntax (clang reads leading -G as unsupported CUDA flag).
+    # Convert to proper -DX -DY defines on the build file itself.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'RNZipArchive'
+      target.source_build_phase.files.each do |build_file|
+        next unless build_file.settings&.key?('COMPILER_FLAGS')
+        flags = build_file.settings['COMPILER_FLAGS']
+        fixed = flags.gsub(/-GCC_PREPROCESSOR_DEFINITIONS="([^"]*)"/) do
+          $1.split.map { |d| d == '$(inherited)' ? d : "-D#{d}" }.join(' ')
+        end
+        build_file.settings['COMPILER_FLAGS'] = fixed
+      end
+    end
   end
 end
