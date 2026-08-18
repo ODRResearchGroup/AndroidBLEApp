@@ -88,7 +88,6 @@ const DataDisplay = () => {
     loadFingerprints();
   }, []);
 
-  const fingerprint: SensorEvent = {
   const saveFingerprint = async () => {
     const fingerprint: SensorEvent = {
       type: 'sensor_reading',
