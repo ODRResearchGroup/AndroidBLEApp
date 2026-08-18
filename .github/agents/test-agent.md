@@ -181,7 +181,7 @@ jest.mock('../influxdb', () => ({
 ```typescript
 // __tests__/unit/BLEUniversal.test.tsx
 import {renderHook, act} from '@testing-library/react-hooks';
-import {useBLE, BLEProvider} from '../BLEUniversal';
+import {useBLE, BLEProvider} from '../../BLEUniversal';
 
 describe('BLEProvider', () => {
   describe('characteristicValues', () => {
