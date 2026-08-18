@@ -27,7 +27,7 @@ The agent can run these commands to fix style issues:
 
 ```bash
 # Run ESLint with auto-fix
-npm run lint --fix
+npm run lint -- --fix
 eslint . --fix --ext .ts,.tsx,.js,.jsx
 
 # Format all files with Prettier
