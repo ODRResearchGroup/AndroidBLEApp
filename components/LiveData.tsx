@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect, useMemo} from 'react';
+import React, {useState, useRef, useEffect, useMemo, useCallback} from 'react';
 import {
   StyleSheet,
   View,
@@ -9,6 +9,11 @@ import {
   Dimensions,
   Modal,
 } from 'react-native';
+import {
+  NavigationProp,
+  useFocusEffect,
+  useNavigation,
+} from '@react-navigation/native';
 import {useBLE} from '../BLEUniversal';
 import Slider from '@react-native-community/slider';
 import CustomRadarChart from '../components/CustomRadarChart';
@@ -43,7 +48,9 @@ interface PlotPoint {
 }
 
 export default function LiveData() {
-  const {characteristicValues} = useBLE();
+  const {characteristicValues, connectedDevice} = useBLE();
+  const navigation = useNavigation<NavigationProp<{Device: undefined}>>();
+  const [isConnected, setIsConnected] = useState(false);
 
   const methane = characteristicValues.Methane || 0;
   const ammonia = characteristicValues.Ammonia || 0;
@@ -83,6 +90,30 @@ export default function LiveData() {
     NO2: [],
   });
   const startTimeRef = useRef<number>(Date.now());
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      const checkConnection = async () => {
+        const connected =
+          connectedDevice !== null &&
+          (await connectedDevice.isConnected().catch(() => false));
+        if (active) {
+          setIsConnected(connected);
+        }
+      };
+
+      checkConnection().catch(() => {
+        if (active) {
+          setIsConnected(false);
+        }
+      });
+
+      return () => {
+        active = false;
+      };
+    }, [connectedDevice]),
+  );
 
   const currentValues = useMemo<Record<SensorKey, number>>(
     () => ({
@@ -195,6 +226,22 @@ export default function LiveData() {
     const id = setInterval(takeSample, intervalMs) as unknown as number;
     samplingRef.current.intervalId = id;
   };
+
+  const handleFingerprint = async () => {
+    const connected =
+      connectedDevice !== null &&
+      (await connectedDevice.isConnected().catch(() => false));
+    if (!connected) {
+      setIsConnected(false);
+      Alert.alert('e-nose not connected', 'Connect to the e-nose first.');
+      return;
+    }
+
+    setShowTimeBar(true);
+    startSampling('fingerprint', 15000, 15);
+  };
+
+  const goToDeviceScreen = () => navigation.navigate('Device');
 
   const stopSamplingAndAverage = (): SensorReadings | null => {
     const id = samplingRef.current.intervalId;
@@ -361,11 +408,12 @@ export default function LiveData() {
 
           {/* Fingerprint Button */}
           <Pressable
-            style={styles.analyseButton}
-            onPress={() => {
-              setShowTimeBar(true);
-              startSampling('fingerprint', 15000, 15);
-            }}>
+            style={[
+              styles.analyseButton,
+              !isConnected && styles.disabledButton,
+            ]}
+            accessibilityState={{disabled: !isConnected}}
+            onPress={isConnected ? handleFingerprint : goToDeviceScreen}>
             <Text style={styles.analyseButtonText}>Fingerprint</Text>
           </Pressable>
 
@@ -524,6 +572,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#000',
     marginVertical: 12,
+  },
+  disabledButton: {
+    opacity: 0.45,
   },
   analyseButtonText: {
     color: '#fff',

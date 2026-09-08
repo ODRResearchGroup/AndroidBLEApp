@@ -1,6 +1,8 @@
-import React, {useMemo, useState} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {
   Alert,
+  InteractionManager,
+  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -12,15 +14,73 @@ import {useBLE} from '../BLEUniversal';
 import FingerprintModal from '../components/FingerprintModal';
 import LiveLocationMap from '../components/LiveLocationMap';
 import {useInfluxDB} from '../services/InfluxDBService';
-import {CircleStop, FingerprintPattern, Play} from 'lucide-react-native';
+import {
+  NavigationProp,
+  useFocusEffect,
+  useNavigation,
+} from '@react-navigation/native';
+import {
+  ArrowRight,
+  CircleStop,
+  FingerprintPattern,
+  Play,
+  X,
+} from 'lucide-react-native';
 
 type SensorValue = {label: string; value: number};
 
 export default function SmellWalkScreen() {
-  const {characteristicValues} = useBLE();
+  const {characteristicValues, connectedDevice} = useBLE();
   const {location, trail, isSmellWalkActive, startSmellWalk, stopSmellWalk} =
     useInfluxDB();
+  const navigation = useNavigation<NavigationProp<{Device: undefined}>>();
+  const [mapVisible, setMapVisible] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [showFingerprintModal, setShowFingerprintModal] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      const interaction = InteractionManager.runAfterInteractions(() => {
+        if (!cancelled) {
+          setMapVisible(true);
+        }
+      });
+
+      return () => {
+        cancelled = true;
+        interaction.cancel();
+        setMapVisible(false);
+      };
+    }, []),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      const checkConnection = async () => {
+        const connected =
+          connectedDevice !== null &&
+          (await connectedDevice.isConnected().catch(() => false));
+        if (active) {
+          setIsConnected(connected);
+          setShowConnectionModal(!connected);
+        }
+      };
+
+      checkConnection().catch(() => {
+        if (active) {
+          setIsConnected(false);
+          setShowConnectionModal(true);
+        }
+      });
+
+      return () => {
+        active = false;
+      };
+    }, [connectedDevice]),
+  );
 
   const sensorValues = useMemo<SensorValue[]>(
     () => [
@@ -45,17 +105,43 @@ export default function SmellWalkScreen() {
     });
   };
 
+  const requireConnectedDevice = async () => {
+    const connected =
+      connectedDevice !== null &&
+      (await connectedDevice.isConnected().catch(() => false));
+    if (!connected) {
+      Alert.alert('e-nose not connected', 'Connect to the e-nose first.');
+    }
+    setIsConnected(connected);
+    return connected;
+  };
+
+  const handleStartWalk = async () => {
+    if (await requireConnectedDevice()) {
+      startSmellWalk();
+    }
+  };
+
+  const handleFingerprint = async () => {
+    if (await requireConnectedDevice()) {
+      setShowFingerprintModal(true);
+    }
+  };
+
+  const goToDeviceScreen = () => {
+    setShowConnectionModal(false);
+    navigation.navigate('Device');
+  };
+
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.mapPanel}>
-        <LiveLocationMap coordinates={location} trail={trail} />
-        <View style={styles.mapBadge}>
-          <Text style={styles.mapBadgeText}>
-            {trail.length > 1
-              ? `${trail.length} GPS points`
-              : 'Waiting for GPS'}
-          </Text>
-        </View>
+        {mapVisible && <LiveLocationMap coordinates={location} trail={trail} />}
+        {!location && (
+          <View style={styles.mapBadge}>
+            <Text style={styles.mapBadgeText}>Waiting for GPS</Text>
+          </View>
+        )}
       </View>
 
       <ScrollView
@@ -80,10 +166,18 @@ export default function SmellWalkScreen() {
                 ? 'Stops recording and sends the final sample'
                 : 'Begins recording sensor data and your GPS trail'
             }
-            onPress={isSmellWalkActive ? handleStopWalk : startSmellWalk}
+            accessibilityState={{disabled: !isSmellWalkActive && !isConnected}}
+            onPress={
+              isSmellWalkActive
+                ? handleStopWalk
+                : isConnected
+                ? handleStartWalk
+                : goToDeviceScreen
+            }
             style={({pressed}) => [
               styles.walkButton,
               isSmellWalkActive && styles.endButton,
+              !isSmellWalkActive && !isConnected && styles.disabledButton,
               pressed && styles.buttonPressed,
             ]}>
             {isSmellWalkActive ? (
@@ -102,12 +196,14 @@ export default function SmellWalkScreen() {
             accessibilityRole="button"
             accessibilityLabel="Create fingerprint"
             accessibilityHint="Opens the fingerprint annotation form"
+            accessibilityState={{disabled: !isConnected}}
             style={({pressed}) => [
               styles.actionButton,
               styles.annotationButton,
+              !isConnected && styles.disabledButton,
               pressed && styles.buttonPressed,
             ]}
-            onPress={() => setShowFingerprintModal(true)}>
+            onPress={isConnected ? handleFingerprint : goToDeviceScreen}>
             <FingerprintPattern color="#fff" size={20} strokeWidth={2.25} />
             <Text style={styles.buttonText}>Fingerprint</Text>
           </Pressable>
@@ -136,6 +232,39 @@ export default function SmellWalkScreen() {
         visible={showFingerprintModal}
         onClose={() => setShowFingerprintModal(false)}
       />
+
+      <Modal
+        visible={showConnectionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={goToDeviceScreen}>
+        <View style={styles.connectionModalBackdrop}>
+          <View style={styles.connectionModalCard}>
+            <View style={styles.connectionModalHeader}>
+              <Text style={styles.connectionModalTitle}>
+                Connect your e-nose
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close connection prompt"
+                style={styles.connectionModalClose}
+                onPress={() => setShowConnectionModal(false)}>
+                <X color="#555" size={22} strokeWidth={2.5} />
+              </Pressable>
+            </View>
+            <Text style={styles.connectionModalText}>
+              Connect to the e-nose before starting a walk or taking a
+              fingerprint.
+            </Text>
+            <Pressable
+              style={styles.connectionModalButton}
+              onPress={goToDeviceScreen}>
+              <Text style={styles.buttonText}>Devices</Text>
+              <ArrowRight color="#fff" size={20} strokeWidth={2.5} />
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -186,7 +315,46 @@ const styles = StyleSheet.create({
   },
   endButton: {backgroundColor: '#b42318'},
   annotationButton: {backgroundColor: '#2563eb'},
+  disabledButton: {opacity: 0.45},
   buttonText: {color: '#fff', fontSize: 15, fontWeight: '600'},
+  connectionModalBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  connectionModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    padding: 24,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+  },
+  connectionModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  connectionModalClose: {
+    padding: 4,
+  },
+  connectionModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111',
+  },
+  connectionModalText: {marginTop: 10, color: '#555', lineHeight: 20},
+  connectionModalButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    alignItems: 'center',
+    marginTop: 20,
+    paddingVertical: 13,
+    borderRadius: 8,
+    backgroundColor: '#2563eb',
+  },
   sectionTitle: {fontSize: 17, fontWeight: '700', color: '#111', marginTop: 22},
   sensorGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10},
   sensorCell: {
