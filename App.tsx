@@ -5,6 +5,7 @@ import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {Bluetooth, Home, MapPinned} from 'lucide-react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {BLEProvider} from './BLEUniversal';
 import Analysis from './components/analysis';
@@ -55,6 +56,16 @@ export type RootStackParamList = {
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const renderHomeIcon = ({color, size}: {color: string; size: number}) => (
+  <Home color={color} size={size} />
+);
+const renderDeviceIcon = ({color, size}: {color: string; size: number}) => (
+  <Bluetooth color={color} size={size} />
+);
+const renderMapIcon = ({color, size}: {color: string; size: number}) => (
+  <MapPinned color={color} size={size} />
+);
+
 function DataStack() {
   return (
     <Stack.Navigator
@@ -104,12 +115,12 @@ export default function App() {
     <InfluxDBProvider>
       <BLEProvider>
         <BaselineProvider>
-          <GestureHandlerRootView style={{flex: 1}}>
+          <GestureHandlerRootView style={styles.root}>
             <SafeAreaProvider>
               <ImageBackground
                 source={require('./pics/background.jpg')}
                 style={styles.background}
-                imageStyle={{resizeMode: 'cover'}}>
+                imageStyle={styles.backgroundImage}>
                 <NavigationContainer>
                   <Tab.Navigator
                     initialRouteName="Home"
@@ -117,9 +128,21 @@ export default function App() {
                       headerShown: false,
                       sceneStyle: {backgroundColor: 'transparent'},
                     }}>
-                    <Tab.Screen name="Home" component={DataStack} />
-                    <Tab.Screen name="Device" component={BLEScreen} />
-                    <Tab.Screen name="Map" component={MappedFingerprints} />
+                    <Tab.Screen
+                      name="Home"
+                      component={DataStack}
+                      options={{tabBarIcon: renderHomeIcon}}
+                    />
+                    <Tab.Screen
+                      name="Device"
+                      component={BLEScreen}
+                      options={{tabBarIcon: renderDeviceIcon}}
+                    />
+                    <Tab.Screen
+                      name="Map"
+                      component={MappedFingerprints}
+                      options={{tabBarIcon: renderMapIcon}}
+                    />
                   </Tab.Navigator>
                 </NavigationContainer>
               </ImageBackground>
@@ -132,5 +155,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  root: {flex: 1},
   background: {flex: 1, width: '100%', height: '100%'},
+  backgroundImage: {resizeMode: 'cover'},
 });

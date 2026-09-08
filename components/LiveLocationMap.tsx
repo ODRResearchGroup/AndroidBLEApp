@@ -13,6 +13,19 @@ type LiveLocationMapProps = {
   trail: Array<{latitude: number; longitude: number}>;
 };
 
+const trailLineStyle = {
+  lineColor: '#e4572e',
+  lineWidth: 4,
+  lineOpacity: 0.9,
+};
+
+const locationPointStyle = {
+  circleColor: '#00a6ffff',
+  circleRadius: 6,
+  circleStrokeWidth: 2,
+  circleStrokeColor: '#ffffff',
+};
+
 export default function LiveLocationMap({
   coordinates,
   trail,
@@ -51,14 +64,7 @@ export default function LiveLocationMap({
               },
               properties: {},
             }}>
-            <LineLayer
-              id="smell-walk-trail-line"
-              style={{
-                lineColor: '#e4572e',
-                lineWidth: 4,
-                lineOpacity: 0.9,
-              }}
-            />
+            <LineLayer id="smell-walk-trail-line" style={trailLineStyle} />
           </ShapeSource>
         )}
 
@@ -78,15 +84,7 @@ export default function LiveLocationMap({
                 },
               ],
             }}>
-            <CircleLayer
-              id="user-point"
-              style={{
-                circleColor: '#00a6ffff',
-                circleRadius: 6,
-                circleStrokeWidth: 2,
-                circleStrokeColor: '#ffffff',
-              }}
-            />
+            <CircleLayer id="user-point" style={locationPointStyle} />
           </ShapeSource>
         )}
       </MapView>

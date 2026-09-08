@@ -45,13 +45,13 @@ interface PlotPoint {
 export default function LiveData() {
   const {characteristicValues} = useBLE();
 
-  const methane = characteristicValues['Methane'] || 0;
-  const ammonia = characteristicValues['Ammonia'] || 0;
-  const formaldehyde = characteristicValues['Formaldehyde'] || 0;
+  const methane = characteristicValues.Methane || 0;
+  const ammonia = characteristicValues.Ammonia || 0;
+  const formaldehyde = characteristicValues.Formaldehyde || 0;
   const voc = characteristicValues['Voletile Organic Compounds'] || 0;
-  const odour = characteristicValues['Odor'] || 0;
+  const odour = characteristicValues.Odor || 0;
   const hydrogenSulfide = characteristicValues['Hydrogen Sulfide'] || 0;
-  const ethanol = characteristicValues['Ethanol'] || 0;
+  const ethanol = characteristicValues.Ethanol || 0;
   const nitrogenDioxide = characteristicValues['Nitrogen Dioxide'] || 0;
 
   const [showFingerprintModal, setShowFingerprintModal] = useState(false);
@@ -66,9 +66,6 @@ export default function LiveData() {
     intervalId: null,
     samples: [],
   });
-  const [editingSavedKey, setEditingSavedKey] = useState<string | undefined>(
-    undefined,
-  );
   const [zoomLevel, setZoomLevel] = useState(0.1);
 
   // Mini plotter state
@@ -87,16 +84,28 @@ export default function LiveData() {
   });
   const startTimeRef = useRef<number>(Date.now());
 
-  const currentValues: Record<SensorKey, number> = {
-    CH4: methane,
-    NH3: ammonia,
-    HCHO: formaldehyde,
-    VOC: voc,
-    Odour: odour,
-    H2S: hydrogenSulfide,
-    Etoh: ethanol,
-    NO2: nitrogenDioxide,
-  };
+  const currentValues = useMemo<Record<SensorKey, number>>(
+    () => ({
+      CH4: methane,
+      NH3: ammonia,
+      HCHO: formaldehyde,
+      VOC: voc,
+      Odour: odour,
+      H2S: hydrogenSulfide,
+      Etoh: ethanol,
+      NO2: nitrogenDioxide,
+    }),
+    [
+      methane,
+      ammonia,
+      formaldehyde,
+      voc,
+      odour,
+      hydrogenSulfide,
+      ethanol,
+      nitrogenDioxide,
+    ],
+  );
 
   // Update plot history
   useEffect(() => {
@@ -119,16 +128,7 @@ export default function LiveData() {
 
       return updated;
     });
-  }, [
-    methane,
-    ammonia,
-    formaldehyde,
-    voc,
-    odour,
-    hydrogenSulfide,
-    ethanol,
-    nitrogenDioxide,
-  ]);
+  }, [currentValues]);
 
   const radarData = useMemo(
     () =>
@@ -204,7 +204,9 @@ export default function LiveData() {
     }
 
     const samples = samplingRef.current.samples;
-    if (!samples || samples.length === 0) return null;
+    if (!samples || samples.length === 0) {
+      return null;
+    }
 
     const sum = samples.reduce(
       (acc, s) => ({
@@ -275,7 +277,6 @@ export default function LiveData() {
         .then(() => {
           emitter.emit('sensor_reading', fingerprint);
           Alert.alert('Saved', 'Fingerprint saved');
-          setEditingSavedKey(key);
           setShowFingerprintModal(true);
         })
         .catch(err => {
@@ -288,7 +289,9 @@ export default function LiveData() {
   // Generate mini plot path with DYNAMIC scale per sensor + 20% headroom
   const generateMiniPlot = (sensorKey: SensorKey): string => {
     const points = plotHistory[sensorKey];
-    if (points.length < 2) return '';
+    if (points.length < 2) {
+      return '';
+    }
 
     // Find min/max for THIS sensor's history
     const values = points.map(p => p.value);
@@ -317,14 +320,13 @@ export default function LiveData() {
 
   return (
     <ScrollView
-      style={{backgroundColor: '#fff'}}
+      style={styles.scrollView}
       contentContainerStyle={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <FingerprintModal
           visible={showFingerprintModal}
           onClose={() => {
             setShowFingerprintModal(false);
-            setEditingSavedKey(undefined);
           }}
         />
 
@@ -450,6 +452,9 @@ export default function LiveData() {
 }
 
 const styles = StyleSheet.create({
+  scrollView: {
+    backgroundColor: '#fff',
+  },
   container: {
     flexGrow: 1,
     backgroundColor: '#fff',
