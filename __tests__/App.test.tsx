@@ -40,39 +40,61 @@ jest.mock('@react-navigation/native-stack', () => ({
   }),
 }));
 
-jest.mock('../BLEUniversal', () => {
+jest.mock('../src/BLEUniversal', () => {
   return {
     BLEProvider: ({ children }: { children: React.ReactNode }) => children,
   };
 });
 
-jest.mock('../components/BaselineContext', () => {
+jest.mock('../src/components/common/BaselineContext', () => {
   return {
     BaselineProvider: ({ children }: { children: React.ReactNode }) => children,
   };
 });
 
-jest.mock('../components/MiniMapOverlay', () => () => null);
-jest.mock('../components/LiveData', () => () => null);
-jest.mock('../components/FingerprintsHistory', () => () => null);
-jest.mock('../components/analysis', () => () => null);
-jest.mock('../components/MappedFingerprints', () => () => null);
-jest.mock('../screens/AddAnnotationScreen', () => () => null);
-jest.mock('../screens/AnnotationFeed', () => () => null);
-jest.mock('../screens/AudioAnnotationScreen', () => () => null);
-jest.mock('../screens/BLEScreen', () => () => null);
-jest.mock('../screens/DataDisplay', () => () => null);
-jest.mock('../screens/EditAnnotationTagsScreen', () => () => null);
-jest.mock('../screens/PhotoAnnotationScreen', () => () => null);
-jest.mock('../screens/ShootPicScreen', () => () => null);
-jest.mock('../services/audioProcessingPoller', () => ({
+jest.mock('../src/services/influx/InfluxDBService', () => ({
+  InfluxDBProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+jest.mock('../src/components/LiveData/LiveData', () => () => null);
+jest.mock(
+  '../src/components/FingerprintsHistory/FingerprintsHistory',
+  () => () => null,
+);
+jest.mock('../src/components/Analysis/Analysis', () => () => null);
+jest.mock(
+  '../src/components/MappedFingerprints/MappedFingerprints',
+  () => () => null,
+);
+jest.mock(
+  '../src/components/AddAnnotation/AddAnnotationScreen',
+  () => () => null,
+);
+jest.mock('../src/components/AnnotationFeed/AnnotationFeed', () => () => null);
+jest.mock(
+  '../src/components/AudioAnnotation/AudioAnnotationScreen',
+  () => () => null,
+);
+jest.mock('../src/components/BLE/BLEScreen', () => () => null);
+jest.mock('../src/components/DataDisplay/DataDisplay', () => () => null);
+jest.mock(
+  '../src/components/EditAnnotationTags/EditAnnotationTagsScreen',
+  () => () => null,
+);
+jest.mock(
+  '../src/components/PhotoAnnotation/PhotoAnnotationScreen',
+  () => () => null,
+);
+jest.mock('../src/components/ShootPic/ShootPicScreen', () => () => null);
+jest.mock('../src/components/SmellWalk/SmellWalkScreen', () => () => null);
+jest.mock('../src/services/audio/audioProcessingPoller', () => ({
   runAudioProcessingPoller: jest.fn().mockResolvedValue(undefined),
 }));
-jest.mock('../services/syncWorker', () => ({
+jest.mock('../src/services/sync/syncWorker', () => ({
   runSyncWorker: jest.fn().mockResolvedValue(undefined),
 }));
 
-import App from '../App';
+import App from '../src/App';
 
 test('renders correctly', async () => {
   await ReactTestRenderer.act(() => {
