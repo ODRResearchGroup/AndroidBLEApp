@@ -10,7 +10,9 @@ import {
   Text,
   View,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import {useBLE} from '../BLEUniversal';
+import CustomRadarChart from '../components/CustomRadarChart';
 import FingerprintModal from '../components/FingerprintModal';
 import LiveLocationMap from '../components/LiveLocationMap';
 import {useInfluxDB} from '../services/InfluxDBService';
@@ -29,15 +31,27 @@ import {
 
 type SensorValue = {label: string; value: number};
 
+const mockSensorValues: SensorValue[] = [
+  {label: 'CH4', value: 0.62},
+  {label: 'NH3', value: 0.38},
+  {label: 'HCHO', value: 0.76},
+  {label: 'VOC', value: 0.54},
+  {label: 'Odour', value: 0.82},
+  {label: 'H2S', value: 0.29},
+  {label: 'Etoh', value: 0.68},
+  {label: 'NO2', value: 0.46},
+];
+
 export default function SmellWalkScreen() {
   const {characteristicValues, connectedDevice} = useBLE();
   const {location, trail, isSmellWalkActive, startSmellWalk, stopSmellWalk} =
     useInfluxDB();
   const navigation = useNavigation<NavigationProp<{Device: undefined}>>();
   const [mapVisible, setMapVisible] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(__DEV__);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [showFingerprintModal, setShowFingerprintModal] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(0.1);
 
   useFocusEffect(
     useCallback(() => {
@@ -64,15 +78,15 @@ export default function SmellWalkScreen() {
           connectedDevice !== null &&
           (await connectedDevice.isConnected().catch(() => false));
         if (active) {
-          setIsConnected(connected);
-          setShowConnectionModal(!connected);
+          setIsConnected(__DEV__ || connected);
+          setShowConnectionModal(!__DEV__ && !connected);
         }
       };
 
       checkConnection().catch(() => {
         if (active) {
-          setIsConnected(false);
-          setShowConnectionModal(true);
+          setIsConnected(__DEV__);
+          setShowConnectionModal(!__DEV__);
         }
       });
 
@@ -82,8 +96,12 @@ export default function SmellWalkScreen() {
     }, [connectedDevice]),
   );
 
-  const sensorValues = useMemo<SensorValue[]>(
-    () => [
+  const sensorValues = useMemo<SensorValue[]>(() => {
+    if (__DEV__ && Object.keys(characteristicValues).length === 0) {
+      return mockSensorValues;
+    }
+
+    return [
       {label: 'CH4', value: characteristicValues.Methane || 0},
       {label: 'NH3', value: characteristicValues.Ammonia || 0},
       {label: 'HCHO', value: characteristicValues.Formaldehyde || 0},
@@ -95,8 +113,25 @@ export default function SmellWalkScreen() {
       {label: 'H2S', value: characteristicValues['Hydrogen Sulfide'] || 0},
       {label: 'Etoh', value: characteristicValues.Ethanol || 0},
       {label: 'NO2', value: characteristicValues['Nitrogen Dioxide'] || 0},
+    ];
+  }, [characteristicValues]);
+
+  const radarData = useMemo(
+    () => [
+      {
+        key: 'live-data',
+        title: 'Live Reading',
+        values: sensorValues.map(sensor => ({
+          x: sensor.label,
+          y: sensor.value,
+        })),
+        color: {
+          fill: 'hsla(210, 100%, 50%, 0.35)',
+          stroke: 'hsla(210, 100%, 40%, 1)',
+        },
+      },
     ],
-    [characteristicValues],
+    [sensorValues],
   );
 
   const handleStopWalk = () => {
@@ -106,6 +141,10 @@ export default function SmellWalkScreen() {
   };
 
   const requireConnectedDevice = async () => {
+    if (__DEV__) {
+      return true;
+    }
+
     const connected =
       connectedDevice !== null &&
       (await connectedDevice.isConnected().catch(() => false));
@@ -166,7 +205,9 @@ export default function SmellWalkScreen() {
                 ? 'Stops recording and sends the final sample'
                 : 'Begins recording sensor data and your GPS trail'
             }
-            accessibilityState={{disabled: !isSmellWalkActive && !isConnected}}
+            accessibilityState={{
+              disabled: !isSmellWalkActive && !isConnected,
+            }}
             onPress={
               isSmellWalkActive
                 ? handleStopWalk
@@ -191,6 +232,24 @@ export default function SmellWalkScreen() {
           </Pressable>
         </View>
 
+        <View style={styles.plotCard}>
+          <CustomRadarChart
+            data={radarData}
+            size={300}
+            maxValue={1}
+            zoomLevel={zoomLevel}
+            gridLevels={5}
+          />
+          <Slider
+            style={styles.slider}
+            minimumValue={0.001}
+            maximumValue={1}
+            step={0.001}
+            value={zoomLevel}
+            onValueChange={setZoomLevel}
+          />
+        </View>
+
         <View style={styles.actions}>
           <Pressable
             accessibilityRole="button"
@@ -208,33 +267,17 @@ export default function SmellWalkScreen() {
             <Text style={styles.buttonText}>Fingerprint</Text>
           </Pressable>
         </View>
-
-        <Text style={styles.sectionTitle}>Live Sensors</Text>
-        <View style={styles.sensorGrid}>
-          {sensorValues.map(sensor => (
-            <View key={sensor.label} style={styles.sensorCell}>
-              <Text style={styles.sensorLabel}>{sensor.label}</Text>
-              <Text style={styles.sensorValue}>{sensor.value.toFixed(4)}</Text>
-            </View>
-          ))}
-        </View>
-
-        <Text style={styles.locationText}>
-          {location
-            ? `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(
-                6,
-              )}`
-            : 'GPS location unavailable'}
-        </Text>
       </ScrollView>
 
-      <FingerprintModal
-        visible={showFingerprintModal}
-        onClose={() => setShowFingerprintModal(false)}
-      />
+      {!__DEV__ && (
+        <FingerprintModal
+          visible={showFingerprintModal}
+          onClose={() => setShowFingerprintModal(false)}
+        />
+      )}
 
       <Modal
-        visible={showConnectionModal}
+        visible={!__DEV__ && showConnectionModal}
         transparent
         animationType="fade"
         onRequestClose={goToDeviceScreen}>
@@ -281,7 +324,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: 'rgba(255,255,255,0.9)',
   },
-  mapBadgeText: {fontSize: 12, color: '#333', fontWeight: '600'},
+  mapBadgeText: {fontSize: 12, color: '#333 ', fontWeight: '600'},
   contentScroll: {flexGrow: 0, flexShrink: 1},
   content: {padding: 18, paddingBottom: 28},
   headerRow: {
@@ -356,16 +399,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563eb',
   },
   sectionTitle: {fontSize: 17, fontWeight: '700', color: '#111', marginTop: 22},
-  sensorGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10},
+  plotCard: {
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  slider: {width: '100%', height: 36},
+  sensorGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8},
   sensorCell: {
     width: '23%',
     minWidth: 72,
     backgroundColor: '#f1f3f5',
     borderRadius: 6,
-    paddingVertical: 10,
+    paddingVertical: 7,
     alignItems: 'center',
   },
-  sensorLabel: {fontSize: 12, color: '#555', fontWeight: '600'},
-  sensorValue: {fontSize: 13, color: '#111', marginTop: 4},
+  sensorLabel: {fontSize: 11, color: '#555', fontWeight: '600'},
+  sensorValue: {fontSize: 11, color: '#111', marginTop: 2},
   locationText: {fontSize: 12, color: '#666', marginTop: 16},
 });
