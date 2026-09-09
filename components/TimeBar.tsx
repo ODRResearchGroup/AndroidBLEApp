@@ -62,8 +62,6 @@ export default function TimedProgressBar({
   );
 }
 
-
-
 const styles = StyleSheet.create({
   modalBackground: {
     flex: 1,

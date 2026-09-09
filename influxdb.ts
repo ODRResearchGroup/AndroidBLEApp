@@ -13,9 +13,19 @@ export class InfluxDBClient {
     this.bucket = bucket;
   }
 
-  async writeData(measurement: string, tags: Record<string, any>, fields: Record<string, any>, timestamp: Date) {
+  async writeData(
+    measurement: string,
+    tags: Record<string, any>,
+    fields: Record<string, any>,
+    timestamp: Date,
+  ) {
     // noop stub - implement actual write logic using @influxdata/influxdb-client or your own API
-    console.debug('InfluxDBClient.writeData stub', { measurement, tags, fields, timestamp });
+    console.debug('InfluxDBClient.writeData stub', {
+      measurement,
+      tags,
+      fields,
+      timestamp,
+    });
     return Promise.resolve();
   }
 }

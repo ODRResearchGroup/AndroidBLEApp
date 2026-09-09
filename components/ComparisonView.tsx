@@ -1,5 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Button, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Button,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomRadarChart from '../components/CustomRadarChart';
 import { SavedFingerprintData } from './sharedTypes';
@@ -34,15 +42,19 @@ const generateColor = (index: number) => {
   };
 };
 
-export default function ComparisonView({ selectedItems, onBack }: ComparisonViewProps) {
+export default function ComparisonView({
+  selectedItems,
+  onBack,
+}: ComparisonViewProps) {
   // Comparison view simplified: always show stored/raw readings
 
   // Prepare radar chart data
   const getRadarData = (item: StoredItem) => {
     const olfactoryData = item.data.fingerprint?.olfactoryData;
-    const maybeReadings: Record<string, number> = (olfactoryData && typeof olfactoryData === 'object')
-      ? ((olfactoryData as any).readings ?? olfactoryData)
-      : {};
+    const maybeReadings: Record<string, number> =
+      olfactoryData && typeof olfactoryData === 'object'
+        ? (olfactoryData as any).readings ?? olfactoryData
+        : {};
 
     if (!Object.keys(maybeReadings).length) {
       return SENSOR_MAP.map(({ key, label }) => ({ x: label, y: 0.01 }));
@@ -65,7 +77,11 @@ export default function ComparisonView({ selectedItems, onBack }: ComparisonView
   const exportSelected = async () => {
     try {
       const selected = selectedItems.map(i => i.data);
-      if (selected.length === 0) return Alert.alert('No selection', 'Please select fingerprints to export.');
+      if (selected.length === 0)
+        return Alert.alert(
+          'No selection',
+          'Please select fingerprints to export.',
+        );
 
       const filename = `fingerprints_selected_${Date.now()}.json`;
       const path = `${DocumentDirectoryPath}/${filename}`;
@@ -104,16 +120,18 @@ export default function ComparisonView({ selectedItems, onBack }: ComparisonView
 
           {/* Legend */}
           <View style={styles.legend}>
-            {radarChartData.map((dataset) => (
+            {radarChartData.map(dataset => (
               <View key={dataset.key} style={styles.legendItem}>
                 <View
-                  style={[styles.legendColor, { backgroundColor: dataset.color.stroke }]}
+                  style={[
+                    styles.legendColor,
+                    { backgroundColor: dataset.color.stroke },
+                  ]}
                 />
                 <Text style={styles.legendText}>{dataset.title}</Text>
               </View>
             ))}
           </View>
-
 
           {/* Export button */}
           <View style={styles.exportButtonContainer}>

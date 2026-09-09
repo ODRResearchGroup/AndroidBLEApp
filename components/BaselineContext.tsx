@@ -15,11 +15,15 @@ type BaselineContextType = {
   getDelta: (currentReadings: SensorReadings) => SensorReadings;
 };
 
-const BaselineContext = createContext<BaselineContextType | undefined>(undefined);
+const BaselineContext = createContext<BaselineContextType | undefined>(
+  undefined,
+);
 
 const BASELINE_KEY = 'sensor_baseline_active';
 
-export const BaselineProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const BaselineProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [baseline, setBaseline] = useState<BaselineData | null>(null);
 
   // Load baseline on mount
@@ -88,8 +92,7 @@ export const BaselineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         saveBaseline,
         clearBaseline,
         getDelta,
-      }}
-    >
+      }}>
       {children}
     </BaselineContext.Provider>
   );

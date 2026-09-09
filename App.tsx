@@ -1,15 +1,15 @@
 import 'react-native-gesture-handler';
-import React, {useEffect} from 'react';
-import {AppState, ImageBackground, StyleSheet} from 'react-native';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {NavigationContainer} from '@react-navigation/native';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import {GestureHandlerRootView} from 'react-native-gesture-handler';
-import {Bluetooth, Home, MapPinned} from 'lucide-react-native';
-import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {BLEProvider} from './BLEUniversal';
+import React, { useEffect } from 'react';
+import { AppState, ImageBackground, StyleSheet } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Bluetooth, Home, MapPinned } from 'lucide-react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { BLEProvider } from './BLEUniversal';
 import Analysis from './components/analysis';
-import {BaselineProvider} from './components/BaselineContext';
+import { BaselineProvider } from './components/BaselineContext';
 import FingerprintsHistory from './components/FingerprintsHistory';
 import LiveData from './components/LiveData';
 import MappedFingerprints from './components/MappedFingerprints';
@@ -22,9 +22,9 @@ import EditAnnotationTagsScreen from './screens/EditAnnotationTagsScreen';
 import PhotoAnnotationScreen from './screens/PhotoAnnotationScreen';
 import ShootPicScreen from './screens/ShootPicScreen';
 import SmellWalkScreen from './screens/SmellWalkScreen';
-import {runAudioProcessingPoller} from './services/audioProcessingPoller';
-import {InfluxDBProvider} from './services/InfluxDBService';
-import {runSyncWorker} from './services/syncWorker';
+import { runAudioProcessingPoller } from './services/audioProcessingPoller';
+import { InfluxDBProvider } from './services/InfluxDBService';
+import { runSyncWorker } from './services/syncWorker';
 
 // ─── Navigation param types ───────────────────────────────────────────────────
 
@@ -35,9 +35,9 @@ export type RootStackParamList = {
   History: undefined;
   Analysis: undefined;
   AnnotationFeed: undefined;
-  AddAnnotation: {sensorRecordId?: string};
-  AudioAnnotation: {annotationIndex: number; sensorRecordId?: string};
-  ShootPic: {annotationIndex: number; sensorRecordId?: string};
+  AddAnnotation: { sensorRecordId?: string };
+  AudioAnnotation: { annotationIndex: number; sensorRecordId?: string };
+  ShootPic: { annotationIndex: number; sensorRecordId?: string };
   PhotoAnnotation: {
     annotationIndex: number;
     photoUri: string;
@@ -50,19 +50,19 @@ export type RootStackParamList = {
     accuracyM: number | null;
     sensorRecordId?: string;
   };
-  EditAnnotationTags: {annotationId: string};
+  EditAnnotationTags: { annotationId: string };
 };
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const renderHomeIcon = ({color, size}: {color: string; size: number}) => (
+const renderHomeIcon = ({ color, size }: { color: string; size: number }) => (
   <Home color={color} size={size} />
 );
-const renderDeviceIcon = ({color, size}: {color: string; size: number}) => (
+const renderDeviceIcon = ({ color, size }: { color: string; size: number }) => (
   <Bluetooth color={color} size={size} />
 );
-const renderMapIcon = ({color, size}: {color: string; size: number}) => (
+const renderMapIcon = ({ color, size }: { color: string; size: number }) => (
   <MapPinned color={color} size={size} />
 );
 
@@ -71,7 +71,7 @@ function DataStack() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        contentStyle: {backgroundColor: 'transparent'},
+        contentStyle: { backgroundColor: 'transparent' },
       }}>
       <Stack.Screen name="DataHome" component={DataDisplay} />
       <Stack.Screen name="LiveData" component={LiveData} />
@@ -126,22 +126,22 @@ export default function App() {
                     initialRouteName="Home"
                     screenOptions={{
                       headerShown: false,
-                      sceneStyle: {backgroundColor: 'transparent'},
+                      sceneStyle: { backgroundColor: 'transparent' },
                     }}>
                     <Tab.Screen
                       name="Home"
                       component={DataStack}
-                      options={{tabBarIcon: renderHomeIcon}}
+                      options={{ tabBarIcon: renderHomeIcon }}
                     />
                     <Tab.Screen
                       name="Device"
                       component={BLEScreen}
-                      options={{tabBarIcon: renderDeviceIcon}}
+                      options={{ tabBarIcon: renderDeviceIcon }}
                     />
                     <Tab.Screen
                       name="Map"
                       component={MappedFingerprints}
-                      options={{tabBarIcon: renderMapIcon}}
+                      options={{ tabBarIcon: renderMapIcon }}
                     />
                   </Tab.Navigator>
                 </NavigationContainer>
@@ -155,7 +155,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  root: {flex: 1},
-  background: {flex: 1, width: '100%', height: '100%'},
-  backgroundImage: {resizeMode: 'cover'},
+  root: { flex: 1 },
+  background: { flex: 1, width: '100%', height: '100%' },
+  backgroundImage: { resizeMode: 'cover' },
 });

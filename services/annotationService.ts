@@ -12,7 +12,7 @@ export type DrawingStroke = {
 
 export type SaveAnnotationPayload = {
   recordingId: string;
-  sensorRecordId?: string;      // link back to sensor fingerprint
+  sensorRecordId?: string; // link back to sensor fingerprint
   type: 'photo' | 'audio';
   description: string;
   strokes?: DrawingStroke[];
@@ -42,18 +42,25 @@ function getConfig() {
   const baseUrl = Config.AZURE_FUNCTION_BASE_URL;
   const functionKey = Config.AZURE_SAVE_ANNOTATION_KEY;
   if (!baseUrl || !functionKey) {
-    throw new Error('Missing AZURE_FUNCTION_BASE_URL or AZURE_SAVE_ANNOTATION_KEY');
+    throw new Error(
+      'Missing AZURE_FUNCTION_BASE_URL or AZURE_SAVE_ANNOTATION_KEY',
+    );
   }
   return { baseUrl, functionKey };
 }
 
-function qs(baseUrl: string, path: string, key: string, params: Record<string, string> = {}) {
+function qs(
+  baseUrl: string,
+  path: string,
+  key: string,
+  params: Record<string, string> = {},
+) {
   const q = new URLSearchParams({ code: key, ...params });
   return `${baseUrl}/api/${path}?${q.toString()}`;
 }
 
 export async function saveAnnotationRemote(
-  payload: SaveAnnotationPayload
+  payload: SaveAnnotationPayload,
 ): Promise<{ annotationId: string }> {
   const { baseUrl, functionKey } = getConfig();
   const res = await fetch(qs(baseUrl, 'save-annotation', functionKey), {
@@ -69,13 +76,15 @@ export async function saveAnnotationRemote(
 }
 
 export async function saveAnnotation(
-  payload: SaveAnnotationPayload
+  payload: SaveAnnotationPayload,
 ): Promise<{ annotationId: string }> {
   try {
     return await saveAnnotationRemote(payload);
   } catch (e: any) {
     // Only queue on network failure (TypeError). HTTP errors mean bad data — propagate them.
-    if (e?.name !== 'TypeError') { throw e; }
+    if (e?.name !== 'TypeError') {
+      throw e;
+    }
     await enqueueSync({
       id: uuidv4(),
       entityType: 'annotation',
@@ -88,10 +97,16 @@ export async function saveAnnotation(
   }
 }
 
-export async function loadAnnotation(annotationId: string): Promise<AnnotationRecord | null> {
+export async function loadAnnotation(
+  annotationId: string,
+): Promise<AnnotationRecord | null> {
   const { baseUrl, functionKey } = getConfig();
-  const res = await fetch(qs(baseUrl, 'get-annotation', functionKey, { annotationId }));
-  if (res.status === 404) { return null; }
+  const res = await fetch(
+    qs(baseUrl, 'get-annotation', functionKey, { annotationId }),
+  );
+  if (res.status === 404) {
+    return null;
+  }
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`get-annotation failed: ${res.status} ${text}`);

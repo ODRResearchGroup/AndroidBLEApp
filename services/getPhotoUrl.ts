@@ -10,11 +10,13 @@ export type GetPhotoUrlResponse = {
 export async function getPhotoUrl(
   captureId: string,
   blobName: string,
-  container?: string
+  container?: string,
 ): Promise<GetPhotoUrlResponse> {
   const baseUrl = Config.AZURE_FUNCTION_BASE_URL;
   const functionKey = Config.AZURE_GET_PHOTO_URL_KEY;
-  if (!baseUrl || !functionKey) { throw new Error('Missing AZURE_GET_PHOTO_URL_KEY'); }
+  if (!baseUrl || !functionKey) {
+    throw new Error('Missing AZURE_GET_PHOTO_URL_KEY');
+  }
 
   const params = new URLSearchParams({
     code: functionKey,
@@ -23,7 +25,9 @@ export async function getPhotoUrl(
     ...(container ? { container } : {}),
   });
 
-  const res = await fetch(`${baseUrl}/api/get-photo-url?${params.toString()}`, { method: 'GET' });
+  const res = await fetch(`${baseUrl}/api/get-photo-url?${params.toString()}`, {
+    method: 'GET',
+  });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`get-photo-url failed: ${res.status} ${text}`);

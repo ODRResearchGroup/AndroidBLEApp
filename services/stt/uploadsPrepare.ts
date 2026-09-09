@@ -24,7 +24,9 @@ export async function uploadsPrepare(
   }
 
   const res = await fetch(
-    `${BASE_URL}/api/uploads-prepare?code=${encodeURIComponent(UPLOADS_PREPARE_KEY)}`,
+    `${BASE_URL}/api/uploads-prepare?code=${encodeURIComponent(
+      UPLOADS_PREPARE_KEY,
+    )}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

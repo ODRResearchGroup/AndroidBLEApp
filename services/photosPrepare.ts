@@ -9,11 +9,13 @@ export type PhotosPrepareResponse = {
 
 export async function photosPrepare(
   captureId: string,
-  imageExt: 'jpg' | 'png' = 'jpg'
+  imageExt: 'jpg' | 'png' = 'jpg',
 ): Promise<PhotosPrepareResponse> {
   const baseUrl = Config.AZURE_FUNCTION_BASE_URL;
   const functionKey = Config.AZURE_FUNCTION_KEY;
-  if (!baseUrl || !functionKey) { throw new Error('Missing Azure function env config'); }
+  if (!baseUrl || !functionKey) {
+    throw new Error('Missing Azure function env config');
+  }
 
   const res = await fetch(
     `${baseUrl}/api/photos-prepare?code=${encodeURIComponent(functionKey)}`,
@@ -21,7 +23,7 @@ export async function photosPrepare(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ captureId, imageExt }),
-    }
+    },
   );
   if (!res.ok) {
     const text = await res.text();

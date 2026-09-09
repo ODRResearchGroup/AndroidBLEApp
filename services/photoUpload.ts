@@ -2,10 +2,16 @@ import ReactNativeBlobUtil from 'react-native-blob-util';
 import { Buffer } from 'buffer';
 import type { PhotoBundle } from './photoTypes';
 
-export type UploadPhotoResult = { container: string; blobName: string; contentType: string };
+export type UploadPhotoResult = {
+  container: string;
+  blobName: string;
+  contentType: string;
+};
 
 function pickImageContentType(fileName?: string | null): string {
-  return (fileName ?? '').toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+  return (fileName ?? '').toLowerCase().endsWith('.png')
+    ? 'image/png'
+    : 'image/jpeg';
 }
 
 function normalizeFilePath(path: string): string {
@@ -13,15 +19,23 @@ function normalizeFilePath(path: string): string {
 }
 
 async function getReadablePath(uri: string): Promise<string> {
-  if (uri.startsWith('file://')) { return uri.replace(/^file:\/\//, ''); }
+  if (uri.startsWith('file://')) {
+    return uri.replace(/^file:\/\//, '');
+  }
   if (uri.startsWith('content://')) {
     const stat = await ReactNativeBlobUtil.fs.stat(uri);
-    if (stat?.path) { return stat.path; }
+    if (stat?.path) {
+      return stat.path;
+    }
   }
   return uri;
 }
 
-async function putBytesToSasUrl(sasUrl: string, bytes: Uint8Array, contentType: string) {
+async function putBytesToSasUrl(
+  sasUrl: string,
+  bytes: Uint8Array,
+  contentType: string,
+) {
   const res = await fetch(sasUrl, {
     method: 'PUT',
     headers: { 'x-ms-blob-type': 'BlockBlob', 'Content-Type': contentType },
@@ -38,7 +52,7 @@ export async function uploadPhotoToAzure(
   sasUploadUrl: string,
   container: string,
   blobName: string,
-  originalFileName?: string | null
+  originalFileName?: string | null,
 ): Promise<UploadPhotoResult> {
   const readablePath = await getReadablePath(localUri);
   const normalized = normalizeFilePath(readablePath);
@@ -56,7 +70,7 @@ export async function uploadPhotoBundleJsonToAzure(
   bundle: PhotoBundle,
   sasUploadUrl: string,
   container: string,
-  blobName: string
+  blobName: string,
 ): Promise<{ container: string; blobName: string }> {
   const bytes = Uint8Array.from(Buffer.from(JSON.stringify(bundle), 'utf8'));
   await putBytesToSasUrl(sasUploadUrl, bytes, 'application/json');

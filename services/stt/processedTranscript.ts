@@ -1,18 +1,24 @@
 import { STT_CONFIG } from './config';
 
-export async function fetchTranscriptText(recordingId: string): Promise<string> {
+export async function fetchTranscriptText(
+  recordingId: string,
+): Promise<string> {
   const { BASE_URL, PROCESSED_TRANSCRIPT_KEY } = STT_CONFIG;
   if (!BASE_URL || !PROCESSED_TRANSCRIPT_KEY) {
-    throw new Error('STT_CONFIG: BASE_URL and PROCESSED_TRANSCRIPT_KEY must be set');
+    throw new Error(
+      'STT_CONFIG: BASE_URL and PROCESSED_TRANSCRIPT_KEY must be set',
+    );
   }
 
   const res = await fetch(
     `${BASE_URL}/api/processed-transcript` +
-    `?recordingId=${encodeURIComponent(recordingId)}` +
-    `&code=${encodeURIComponent(PROCESSED_TRANSCRIPT_KEY)}`,
+      `?recordingId=${encodeURIComponent(recordingId)}` +
+      `&code=${encodeURIComponent(PROCESSED_TRANSCRIPT_KEY)}`,
   );
 
-  if (res.status === 404) { return ''; }
+  if (res.status === 404) {
+    return '';
+  }
 
   if (!res.ok) {
     const text = await res.text();

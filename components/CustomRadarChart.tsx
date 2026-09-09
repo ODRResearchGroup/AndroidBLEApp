@@ -1,6 +1,12 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import Svg, { Polygon, Line, Text as SvgText, G, Circle } from 'react-native-svg';
+import Svg, {
+  Polygon,
+  Line,
+  Text as SvgText,
+  G,
+  Circle,
+} from 'react-native-svg';
 
 type RadarDataPoint = {
   x: string;
@@ -16,7 +22,7 @@ type RadarChartProps = {
   }>;
   size?: number;
   maxValue?: number;
-    zoomLevel?: number;   // <-- ADD THIS
+  zoomLevel?: number; // <-- ADD THIS
   gridLevels?: number;
 };
 
@@ -36,7 +42,7 @@ const CustomRadarChart: React.FC<RadarChartProps> = ({
   // Convert polar coordinates to cartesian
   const polarToCartesian = (
     radius: number,
-    angleIndex: number
+    angleIndex: number,
   ): { x: number; y: number } => {
     const angle = angleIndex * angleStep - Math.PI / 2; // Start from top
     return {
@@ -64,7 +70,7 @@ const CustomRadarChart: React.FC<RadarChartProps> = ({
           fill="none"
           stroke="#e0e0e0"
           strokeWidth="1"
-        />
+        />,
       );
     }
     return polygons;
@@ -84,7 +90,7 @@ const CustomRadarChart: React.FC<RadarChartProps> = ({
           y2={endPoint.y}
           stroke="#d0d0d0"
           strokeWidth="1"
-        />
+        />,
       );
     }
     return axes;
@@ -108,34 +114,33 @@ const CustomRadarChart: React.FC<RadarChartProps> = ({
           fontSize="10"
           fontWeight="600"
           textAnchor="middle"
-          alignmentBaseline="middle"
-        >
+          alignmentBaseline="middle">
           {labelText}
-        </SvgText>
+        </SvgText>,
       );
     }
     return labels;
   };
 
   // Convert data values to polygon points
-const generateDataPolygon = (values: RadarDataPoint[]) => {
-  const points: string[] = [];
+  const generateDataPolygon = (values: RadarDataPoint[]) => {
+    const points: string[] = [];
 
-  values.forEach((dataPoint, index) => {
-    const normalizedValue = Math.min(dataPoint.y, maxValue);
-    const radius = (normalizedValue / maxValue) * maxRadius * zoomLevel;  // <-- FIX
-    const point = polarToCartesian(radius, index);
-    points.push(`${point.x},${point.y}`);
-  });
+    values.forEach((dataPoint, index) => {
+      const normalizedValue = Math.min(dataPoint.y, maxValue);
+      const radius = (normalizedValue / maxValue) * maxRadius * zoomLevel; // <-- FIX
+      const point = polarToCartesian(radius, index);
+      points.push(`${point.x},${point.y}`);
+    });
 
-  return points.join(' ');
-};
+    return points.join(' ');
+  };
 
   // Generate data point circles (optional - for interactive highlighting)
   const generateDataPoints = (values: RadarDataPoint[], color: string) => {
     return values.map((dataPoint, index) => {
       const normalizedValue = Math.min(dataPoint.y, maxValue);
-   const radius = (normalizedValue / maxValue) * maxRadius * zoomLevel;
+      const radius = (normalizedValue / maxValue) * maxRadius * zoomLevel;
 
       const point = polarToCartesian(radius, index);
 
@@ -167,7 +172,7 @@ const generateDataPolygon = (values: RadarDataPoint[]) => {
           {data
             .slice()
             .reverse()
-            .map((dataset) => (
+            .map(dataset => (
               <G key={dataset.key}>
                 <Polygon
                   points={generateDataPolygon(dataset.values)}
@@ -181,7 +186,6 @@ const generateDataPolygon = (values: RadarDataPoint[]) => {
 
           {/* Labels on top */}
           {generateLabels()}
-
         </G>
       </Svg>
     </View>

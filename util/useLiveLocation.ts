@@ -1,11 +1,11 @@
-import {useState, useEffect} from 'react';
-import {PermissionsAndroid, Platform} from 'react-native';
+import { useState, useEffect } from 'react';
+import { PermissionsAndroid, Platform } from 'react-native';
 import Geolocation, {
   GeoPosition,
   GeoError,
 } from 'react-native-geolocation-service';
 
-type Coordinates = {latitude: number; longitude: number};
+type Coordinates = { latitude: number; longitude: number };
 
 export default function useLiveLocation() {
   const [location, setLocation] = useState<Coordinates | null>(null);
@@ -142,5 +142,5 @@ export default function useLiveLocation() {
     };
   }, []);
 
-  return {location, error};
+  return { location, error };
 }

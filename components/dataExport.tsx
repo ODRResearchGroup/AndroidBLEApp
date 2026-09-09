@@ -18,7 +18,9 @@ import { DocumentDirectoryPath, writeFile } from 'react-native-fs';
 export async function exportFingerprints(share = true): Promise<string> {
   try {
     const keys = await AsyncStorage.getAllKeys();
-    const fingerprintKeys = keys.filter(k => k.startsWith('sensor_fingerprint_'));
+    const fingerprintKeys = keys.filter(k =>
+      k.startsWith('sensor_fingerprint_'),
+    );
     const pairs = await AsyncStorage.multiGet(fingerprintKeys);
 
     const parsed = pairs

@@ -1,5 +1,5 @@
-import React, {useCallback, useEffect, useRef} from 'react';
-import {StyleSheet, View} from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { StyleSheet, View } from 'react-native';
 import {
   MapView,
   Camera,
@@ -9,8 +9,8 @@ import {
 } from '@maplibre/maplibre-react-native';
 
 type LiveLocationMapProps = {
-  coordinates: {latitude: number; longitude: number} | null;
-  trail: Array<{latitude: number; longitude: number}>;
+  coordinates: { latitude: number; longitude: number } | null;
+  trail: Array<{ latitude: number; longitude: number }>;
 };
 
 const trailLineStyle = {
@@ -118,6 +118,6 @@ export default function LiveLocationMap({
 }
 
 const styles = StyleSheet.create({
-  container: {flex: 1},
-  map: {flex: 1},
+  container: { flex: 1 },
+  map: { flex: 1 },
 });

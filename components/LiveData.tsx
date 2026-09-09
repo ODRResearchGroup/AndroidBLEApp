@@ -1,4 +1,10 @@
-import React, {useState, useRef, useEffect, useMemo, useCallback} from 'react';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+} from 'react';
 import {
   StyleSheet,
   View,
@@ -14,18 +20,18 @@ import {
   useFocusEffect,
   useNavigation,
 } from '@react-navigation/native';
-import {useBLE} from '../BLEUniversal';
+import { useBLE } from '../BLEUniversal';
 import Slider from '@react-native-community/slider';
 import CustomRadarChart from '../components/CustomRadarChart';
 import FingerprintModal from '../components/FingerprintModal';
 import TimedProgressBar from './TimeBar';
-import {SensorReadings} from './sharedTypes';
+import { SensorReadings } from './sharedTypes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {SensorEvent, emitter} from '../types';
-import {Alert} from 'react-native';
-import Svg, {Path, Line, Rect} from 'react-native-svg';
+import { SensorEvent, emitter } from '../types';
+import { Alert } from 'react-native';
+import Svg, { Path, Line, Rect } from 'react-native-svg';
 
-const {width} = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 // Mini plotter config
 const PLOT_HISTORY_SIZE = 30; // 30 seconds
@@ -48,8 +54,8 @@ interface PlotPoint {
 }
 
 export default function LiveData() {
-  const {characteristicValues, connectedDevice} = useBLE();
-  const navigation = useNavigation<NavigationProp<{Device: undefined}>>();
+  const { characteristicValues, connectedDevice } = useBLE();
+  const navigation = useNavigation<NavigationProp<{ Device: undefined }>>();
   const [isConnected, setIsConnected] = useState(false);
 
   const methane = characteristicValues.Methane || 0;
@@ -144,7 +150,7 @@ export default function LiveData() {
     const elapsedSeconds = (now - startTimeRef.current) / 1000;
 
     setPlotHistory(prev => {
-      const updated = {...prev};
+      const updated = { ...prev };
 
       (Object.keys(currentValues) as SensorKey[]).forEach(key => {
         const newPoint: PlotPoint = {
@@ -164,14 +170,14 @@ export default function LiveData() {
   const radarData = useMemo(
     () =>
       [
-        {label: 'Ch4', key: 'CH4' as SensorKey, value: methane},
-        {label: 'NH3', key: 'NH3' as SensorKey, value: ammonia},
-        {label: 'HCHO', key: 'HCHO' as SensorKey, value: formaldehyde},
-        {label: 'VOC', key: 'VOC' as SensorKey, value: voc},
-        {label: 'Odour', key: 'Odour' as SensorKey, value: odour},
-        {label: 'H2S', key: 'H2S' as SensorKey, value: hydrogenSulfide},
-        {label: 'Etoh', key: 'Etoh' as SensorKey, value: ethanol},
-        {label: 'No2', key: 'NO2' as SensorKey, value: nitrogenDioxide},
+        { label: 'Ch4', key: 'CH4' as SensorKey, value: methane },
+        { label: 'NH3', key: 'NH3' as SensorKey, value: ammonia },
+        { label: 'HCHO', key: 'HCHO' as SensorKey, value: formaldehyde },
+        { label: 'VOC', key: 'VOC' as SensorKey, value: voc },
+        { label: 'Odour', key: 'Odour' as SensorKey, value: odour },
+        { label: 'H2S', key: 'H2S' as SensorKey, value: hydrogenSulfide },
+        { label: 'Etoh', key: 'Etoh' as SensorKey, value: ethanol },
+        { label: 'No2', key: 'NO2' as SensorKey, value: nitrogenDioxide },
       ].filter(item => !isNaN(item.value)),
     [
       methane,
@@ -189,7 +195,7 @@ export default function LiveData() {
     {
       key: 'live-data',
       title: 'Live Reading',
-      values: radarData.map(d => ({x: d.label, y: d.value})),
+      values: radarData.map(d => ({ x: d.label, y: d.value })),
       color: {
         fill: 'hsla(210, 100%, 50%, 0.35)',
         stroke: 'hsla(210, 100%, 40%, 1)',
@@ -266,7 +272,7 @@ export default function LiveData() {
         Etoh: acc.Etoh + s.Etoh,
         NO2: acc.NO2 + s.NO2,
       }),
-      {CH4: 0, NH3: 0, HCHO: 0, VOC: 0, Odour: 0, H2S: 0, Etoh: 0, NO2: 0},
+      { CH4: 0, NH3: 0, HCHO: 0, VOC: 0, Odour: 0, H2S: 0, Etoh: 0, NO2: 0 },
     );
 
     const avg: SensorReadings = {
@@ -312,8 +318,8 @@ export default function LiveData() {
       const savedData = {
         fingerprint,
         location: null,
-        fingerprintTitle: {title: 'Untitled'},
-        humanDescription: {description: ''},
+        fingerprintTitle: { title: 'Untitled' },
+        humanDescription: { description: '' },
         photoPath: undefined,
         deltaReadings: undefined,
         timestamp: new Date().toISOString(),
@@ -412,7 +418,7 @@ export default function LiveData() {
               styles.analyseButton,
               !isConnected && styles.disabledButton,
             ]}
-            accessibilityState={{disabled: !isConnected}}
+            accessibilityState={{ disabled: !isConnected }}
             onPress={isConnected ? handleFingerprint : goToDeviceScreen}>
             <Text style={styles.analyseButtonText}>Fingerprint</Text>
           </Pressable>
