@@ -93,6 +93,12 @@ jest.mock('../src/services/audio/audioProcessingPoller', () => ({
 jest.mock('../src/services/sync/syncWorker', () => ({
   runSyncWorker: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock('react-native-fs', () => ({
+  CachesDirectoryPath: '/tmp',
+  downloadFile: jest.fn(() => ({
+    promise: Promise.resolve({ statusCode: 200 }),
+  })),
+}));
 
 import App from '../src/App';
 

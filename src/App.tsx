@@ -25,6 +25,7 @@ import SmellWalkScreen from './components/SmellWalk/SmellWalkScreen';
 import { runAudioProcessingPoller } from './services/audio/audioProcessingPoller';
 import { InfluxDBProvider } from './services/influx/InfluxDBService';
 import { runSyncWorker } from './services/sync/syncWorker';
+import { checkAndPromptForAppUpdate } from './services/updates/appUpdater';
 
 // ─── Navigation param types ───────────────────────────────────────────────────
 
@@ -95,6 +96,7 @@ export default function App() {
   useEffect(() => {
     runSyncWorker().catch(() => {});
     runAudioProcessingPoller().catch(() => {});
+    checkAndPromptForAppUpdate();
     const interval = setInterval(() => {
       runSyncWorker().catch(() => {});
       runAudioProcessingPoller().catch(() => {});
@@ -103,6 +105,7 @@ export default function App() {
       if (state === 'active') {
         runSyncWorker().catch(() => {});
         runAudioProcessingPoller().catch(() => {});
+        checkAndPromptForAppUpdate();
       }
     });
     return () => {
