@@ -1,17 +1,17 @@
 import React from 'react';
 import {View, StyleSheet, Dimensions} from 'react-native';
-import useLiveLocation from '../util/useLiveLocation';
 import LiveLocationMap from './LiveLocationMap';
+import {useInfluxDB} from '../services/InfluxDBService';
 
 const {width} = Dimensions.get('window');
 
 export default function MiniMapOverlay() {
-  const {location} = useLiveLocation();
+  const {location, trail} = useInfluxDB();
 
   return (
     <View style={styles.container}>
       <View style={styles.mapWrapper}>
-        <LiveLocationMap coordinates={location} />
+        <LiveLocationMap coordinates={location} trail={trail} />
       </View>
     </View>
   );

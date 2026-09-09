@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, {useState, useRef, useEffect, useMemo, useCallback} from 'react';
 import {
   StyleSheet,
   View,
@@ -9,25 +9,38 @@ import {
   Dimensions,
   Modal,
 } from 'react-native';
-import { useBLE } from '../BLEUniversal';
+import {
+  NavigationProp,
+  useFocusEffect,
+  useNavigation,
+} from '@react-navigation/native';
+import {useBLE} from '../BLEUniversal';
 import Slider from '@react-native-community/slider';
 import CustomRadarChart from '../components/CustomRadarChart';
 import FingerprintModal from '../components/FingerprintModal';
 import TimedProgressBar from './TimeBar';
-import { SensorReadings } from './sharedTypes';
+import {SensorReadings} from './sharedTypes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SensorEvent, emitter } from '../types';
-import { Alert } from 'react-native';
-import Svg, { Path, Line, Rect } from 'react-native-svg';
+import {SensorEvent, emitter} from '../types';
+import {Alert} from 'react-native';
+import Svg, {Path, Line, Rect} from 'react-native-svg';
 
-const { width } = Dimensions.get('window');
+const {width} = Dimensions.get('window');
 
 // Mini plotter config
 const PLOT_HISTORY_SIZE = 30; // 30 seconds
 const PLOT_WIDTH = width - 80;
 const PLOT_HEIGHT = 150;
 
-type SensorKey = 'CH4' | 'NH3' | 'HCHO' | 'VOC' | 'Odour' | 'H2S' | 'Etoh' | 'NO2';
+type SensorKey =
+  | 'CH4'
+  | 'NH3'
+  | 'HCHO'
+  | 'VOC'
+  | 'Odour'
+  | 'H2S'
+  | 'Etoh'
+  | 'NO2';
 
 interface PlotPoint {
   time: number;
@@ -35,30 +48,38 @@ interface PlotPoint {
 }
 
 export default function LiveData() {
-  const { characteristicValues } = useBLE();
+  const {characteristicValues, connectedDevice} = useBLE();
+  const navigation = useNavigation<NavigationProp<{Device: undefined}>>();
+  const [isConnected, setIsConnected] = useState(false);
 
-  const methane = characteristicValues['Methane'] || 0;
-  const ammonia = characteristicValues['Ammonia'] || 0;
-  const formaldehyde = characteristicValues['Formaldehyde'] || 0;
+  const methane = characteristicValues.Methane || 0;
+  const ammonia = characteristicValues.Ammonia || 0;
+  const formaldehyde = characteristicValues.Formaldehyde || 0;
   const voc = characteristicValues['Voletile Organic Compounds'] || 0;
-  const odour = characteristicValues['Odor'] || 0;
+  const odour = characteristicValues.Odor || 0;
   const hydrogenSulfide = characteristicValues['Hydrogen Sulfide'] || 0;
-  const ethanol = characteristicValues['Ethanol'] || 0;
+  const ethanol = characteristicValues.Ethanol || 0;
   const nitrogenDioxide = characteristicValues['Nitrogen Dioxide'] || 0;
 
   const [showFingerprintModal, setShowFingerprintModal] = useState(false);
   const [showTimeBar, setShowTimeBar] = useState(false);
-  const [samplingMode, setSamplingMode] = useState<'idle' | 'fingerprint'>('idle');
-  const samplingRef = useRef<{ intervalId: number | null; samples: SensorReadings[] }>({ 
-    intervalId: null, 
-    samples: [] 
+  const [samplingMode, setSamplingMode] = useState<'idle' | 'fingerprint'>(
+    'idle',
+  );
+  const samplingRef = useRef<{
+    intervalId: number | null;
+    samples: SensorReadings[];
+  }>({
+    intervalId: null,
+    samples: [],
   });
-  const [editingSavedKey, setEditingSavedKey] = useState<string | undefined>(undefined);
   const [zoomLevel, setZoomLevel] = useState(0.1);
-  
+
   // Mini plotter state
   const [selectedSensor, setSelectedSensor] = useState<SensorKey | null>(null);
-  const [plotHistory, setPlotHistory] = useState<Record<SensorKey, PlotPoint[]>>({
+  const [plotHistory, setPlotHistory] = useState<
+    Record<SensorKey, PlotPoint[]>
+  >({
     CH4: [],
     NH3: [],
     HCHO: [],
@@ -70,16 +91,52 @@ export default function LiveData() {
   });
   const startTimeRef = useRef<number>(Date.now());
 
-  const currentValues: Record<SensorKey, number> = {
-    CH4: methane,
-    NH3: ammonia,
-    HCHO: formaldehyde,
-    VOC: voc,
-    Odour: odour,
-    H2S: hydrogenSulfide,
-    Etoh: ethanol,
-    NO2: nitrogenDioxide,
-  };
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      const checkConnection = async () => {
+        const connected =
+          connectedDevice !== null &&
+          (await connectedDevice.isConnected().catch(() => false));
+        if (active) {
+          setIsConnected(connected);
+        }
+      };
+
+      checkConnection().catch(() => {
+        if (active) {
+          setIsConnected(false);
+        }
+      });
+
+      return () => {
+        active = false;
+      };
+    }, [connectedDevice]),
+  );
+
+  const currentValues = useMemo<Record<SensorKey, number>>(
+    () => ({
+      CH4: methane,
+      NH3: ammonia,
+      HCHO: formaldehyde,
+      VOC: voc,
+      Odour: odour,
+      H2S: hydrogenSulfide,
+      Etoh: ethanol,
+      NO2: nitrogenDioxide,
+    }),
+    [
+      methane,
+      ammonia,
+      formaldehyde,
+      voc,
+      odour,
+      hydrogenSulfide,
+      ethanol,
+      nitrogenDioxide,
+    ],
+  );
 
   // Update plot history
   useEffect(() => {
@@ -87,7 +144,7 @@ export default function LiveData() {
     const elapsedSeconds = (now - startTimeRef.current) / 1000;
 
     setPlotHistory(prev => {
-      const updated = { ...prev };
+      const updated = {...prev};
 
       (Object.keys(currentValues) as SensorKey[]).forEach(key => {
         const newPoint: PlotPoint = {
@@ -102,30 +159,43 @@ export default function LiveData() {
 
       return updated;
     });
-  }, [methane, ammonia, formaldehyde, voc, odour, hydrogenSulfide, ethanol, nitrogenDioxide]);
+  }, [currentValues]);
 
-  const radarData = useMemo(() => [
-    { label: 'Ch4', key: 'CH4' as SensorKey, value: methane },
-    { label: 'NH3', key: 'NH3' as SensorKey, value: ammonia },
-    { label: 'HCHO', key: 'HCHO' as SensorKey, value: formaldehyde },
-    { label: 'VOC', key: 'VOC' as SensorKey, value: voc },
-    { label: 'Odour', key: 'Odour' as SensorKey, value: odour },
-    { label: 'H2S', key: 'H2S' as SensorKey, value: hydrogenSulfide },
-    { label: 'Etoh', key: 'Etoh' as SensorKey, value: ethanol },
-    { label: 'No2', key: 'NO2' as SensorKey, value: nitrogenDioxide },
-  ].filter(item => !isNaN(item.value)), [
-    methane, ammonia, formaldehyde, voc, odour, hydrogenSulfide, ethanol, nitrogenDioxide
-  ]);
+  const radarData = useMemo(
+    () =>
+      [
+        {label: 'Ch4', key: 'CH4' as SensorKey, value: methane},
+        {label: 'NH3', key: 'NH3' as SensorKey, value: ammonia},
+        {label: 'HCHO', key: 'HCHO' as SensorKey, value: formaldehyde},
+        {label: 'VOC', key: 'VOC' as SensorKey, value: voc},
+        {label: 'Odour', key: 'Odour' as SensorKey, value: odour},
+        {label: 'H2S', key: 'H2S' as SensorKey, value: hydrogenSulfide},
+        {label: 'Etoh', key: 'Etoh' as SensorKey, value: ethanol},
+        {label: 'No2', key: 'NO2' as SensorKey, value: nitrogenDioxide},
+      ].filter(item => !isNaN(item.value)),
+    [
+      methane,
+      ammonia,
+      formaldehyde,
+      voc,
+      odour,
+      hydrogenSulfide,
+      ethanol,
+      nitrogenDioxide,
+    ],
+  );
 
-  const chartData = [{
-    key: 'live-data',
-    title: 'Live Reading',
-    values: radarData.map(d => ({ x: d.label, y: d.value })),
-    color: {
-      fill: 'hsla(210, 100%, 50%, 0.35)',
-      stroke: 'hsla(210, 100%, 40%, 1)',
-    }
-  }];
+  const chartData = [
+    {
+      key: 'live-data',
+      title: 'Live Reading',
+      values: radarData.map(d => ({x: d.label, y: d.value})),
+      color: {
+        fill: 'hsla(210, 100%, 50%, 0.35)',
+        stroke: 'hsla(210, 100%, 40%, 1)',
+      },
+    },
+  ];
 
   const getCurrentReadings = (): SensorReadings => ({
     CH4: methane,
@@ -138,7 +208,11 @@ export default function LiveData() {
     NO2: nitrogenDioxide,
   });
 
-  const startSampling = (mode: 'fingerprint', durationMs: number, sampleCount: number) => {
+  const startSampling = (
+    mode: 'fingerprint',
+    durationMs: number,
+    sampleCount: number,
+  ) => {
     samplingRef.current.samples = [];
     setSamplingMode(mode);
     const intervalMs = Math.max(1000, Math.floor(durationMs / sampleCount));
@@ -153,6 +227,22 @@ export default function LiveData() {
     samplingRef.current.intervalId = id;
   };
 
+  const handleFingerprint = async () => {
+    const connected =
+      connectedDevice !== null &&
+      (await connectedDevice.isConnected().catch(() => false));
+    if (!connected) {
+      setIsConnected(false);
+      Alert.alert('e-nose not connected', 'Connect to the e-nose first.');
+      return;
+    }
+
+    setShowTimeBar(true);
+    startSampling('fingerprint', 15000, 15);
+  };
+
+  const goToDeviceScreen = () => navigation.navigate('Device');
+
   const stopSamplingAndAverage = (): SensorReadings | null => {
     const id = samplingRef.current.intervalId;
     if (id) {
@@ -161,18 +251,23 @@ export default function LiveData() {
     }
 
     const samples = samplingRef.current.samples;
-    if (!samples || samples.length === 0) return null;
+    if (!samples || samples.length === 0) {
+      return null;
+    }
 
-    const sum = samples.reduce((acc, s) => ({
-      CH4: acc.CH4 + s.CH4,
-      NH3: acc.NH3 + s.NH3,
-      HCHO: acc.HCHO + s.HCHO,
-      VOC: acc.VOC + s.VOC,
-      Odour: acc.Odour + s.Odour,
-      H2S: acc.H2S + s.H2S,
-      Etoh: acc.Etoh + s.Etoh,
-      NO2: acc.NO2 + s.NO2,
-    }), { CH4: 0, NH3: 0, HCHO: 0, VOC: 0, Odour: 0, H2S: 0, Etoh: 0, NO2: 0 });
+    const sum = samples.reduce(
+      (acc, s) => ({
+        CH4: acc.CH4 + s.CH4,
+        NH3: acc.NH3 + s.NH3,
+        HCHO: acc.HCHO + s.HCHO,
+        VOC: acc.VOC + s.VOC,
+        Odour: acc.Odour + s.Odour,
+        H2S: acc.H2S + s.H2S,
+        Etoh: acc.Etoh + s.Etoh,
+        NO2: acc.NO2 + s.NO2,
+      }),
+      {CH4: 0, NH3: 0, HCHO: 0, VOC: 0, Odour: 0, H2S: 0, Etoh: 0, NO2: 0},
+    );
 
     const avg: SensorReadings = {
       CH4: sum.CH4 / samples.length,
@@ -202,8 +297,14 @@ export default function LiveData() {
         olfactoryData: {
           readings: avg,
           units: {
-            CH4: 'V', NH3: 'V', HCHO: 'V', VOC: 'V',
-            Odour: 'V', H2S: 'V', Etoh: 'V', NO2: 'V',
+            CH4: 'V',
+            NH3: 'V',
+            HCHO: 'V',
+            VOC: 'V',
+            Odour: 'V',
+            H2S: 'V',
+            Etoh: 'V',
+            NO2: 'V',
           },
         },
       } as any;
@@ -211,8 +312,8 @@ export default function LiveData() {
       const savedData = {
         fingerprint,
         location: null,
-        fingerprintTitle: { title: 'Untitled' },
-        humanDescription: { description: '' },
+        fingerprintTitle: {title: 'Untitled'},
+        humanDescription: {description: ''},
         photoPath: undefined,
         deltaReadings: undefined,
         timestamp: new Date().toISOString(),
@@ -223,7 +324,6 @@ export default function LiveData() {
         .then(() => {
           emitter.emit('sensor_reading', fingerprint);
           Alert.alert('Saved', 'Fingerprint saved');
-          setEditingSavedKey(key);
           setShowFingerprintModal(true);
         })
         .catch(err => {
@@ -236,7 +336,9 @@ export default function LiveData() {
   // Generate mini plot path with DYNAMIC scale per sensor + 20% headroom
   const generateMiniPlot = (sensorKey: SensorKey): string => {
     const points = plotHistory[sensorKey];
-    if (points.length < 2) return '';
+    if (points.length < 2) {
+      return '';
+    }
 
     // Find min/max for THIS sensor's history
     const values = points.map(p => p.value);
@@ -256,7 +358,7 @@ export default function LiveData() {
       const x = index * xStep;
       const clampedValue = Math.max(Y_MIN, Math.min(Y_MAX, point.value));
       const normalized = (clampedValue - Y_MIN) / range;
-      const y = PLOT_HEIGHT - (normalized * (PLOT_HEIGHT - 20));
+      const y = PLOT_HEIGHT - normalized * (PLOT_HEIGHT - 20);
       return `${x},${y}`;
     });
 
@@ -264,13 +366,14 @@ export default function LiveData() {
   };
 
   return (
-    <ScrollView style={{ backgroundColor: '#fff' }} contentContainerStyle={styles.container}>
+    <ScrollView
+      style={styles.scrollView}
+      contentContainerStyle={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <FingerprintModal
           visible={showFingerprintModal}
           onClose={() => {
             setShowFingerprintModal(false);
-            setEditingSavedKey(undefined);
           }}
         />
 
@@ -303,26 +406,24 @@ export default function LiveData() {
             onValueChange={setZoomLevel}
           />
 
-
           {/* Fingerprint Button */}
           <Pressable
-            style={styles.analyseButton}
-            onPress={() => {
-              setShowTimeBar(true);
-              startSampling('fingerprint', 15000, 15);
-            }}
-          >
+            style={[
+              styles.analyseButton,
+              !isConnected && styles.disabledButton,
+            ]}
+            accessibilityState={{disabled: !isConnected}}
+            onPress={isConnected ? handleFingerprint : goToDeviceScreen}>
             <Text style={styles.analyseButtonText}>Fingerprint</Text>
           </Pressable>
 
           {/* Sensor Grid - Now clickable */}
           <View style={styles.sensorGrid}>
-            {radarData.map((item) => (
+            {radarData.map(item => (
               <Pressable
                 key={item.label}
                 style={styles.sensorCell}
-                onPress={() => setSelectedSensor(item.key)}
-              >
+                onPress={() => setSelectedSensor(item.key)}>
                 <Text style={styles.sensorLabel}>{item.label}</Text>
                 <Text style={styles.sensorValue}>{item.value.toFixed(4)}</Text>
                 <Text style={styles.tapHint}>Tap for plot</Text>
@@ -337,8 +438,7 @@ export default function LiveData() {
             visible={true}
             animationType="slide"
             transparent={true}
-            onRequestClose={() => setSelectedSensor(null)}
-          >
+            onRequestClose={() => setSelectedSensor(null)}>
             <View style={styles.modalOverlay}>
               <View style={styles.plotterModal}>
                 <View style={styles.plotterHeader}>
@@ -352,19 +452,25 @@ export default function LiveData() {
 
                 <View style={styles.plotContainer}>
                   <Svg width={PLOT_WIDTH} height={PLOT_HEIGHT}>
-                    <Rect x={0} y={0} width={PLOT_WIDTH} height={PLOT_HEIGHT} fill="#FAFAFA" />
-                    
+                    <Rect
+                      x={0}
+                      y={0}
+                      width={PLOT_WIDTH}
+                      height={PLOT_HEIGHT}
+                      fill="#FAFAFA"
+                    />
+
                     {/* Simple grid - no labels */}
                     {[0, 0.5, 1].map((fraction, i) => (
                       <Line
                         key={`grid-${i}`}
                         x1={0}
-                        y1={PLOT_HEIGHT - (fraction * (PLOT_HEIGHT - 20))}
+                        y1={PLOT_HEIGHT - fraction * (PLOT_HEIGHT - 20)}
                         x2={PLOT_WIDTH}
-                        y2={PLOT_HEIGHT - (fraction * (PLOT_HEIGHT - 20))}
+                        y2={PLOT_HEIGHT - fraction * (PLOT_HEIGHT - 20)}
                         stroke="#E0E0E0"
                         strokeWidth="1"
-                        strokeDasharray={fraction === 0.5 ? "4,4" : "0"}
+                        strokeDasharray={fraction === 0.5 ? '4,4' : '0'}
                       />
                     ))}
 
@@ -394,6 +500,9 @@ export default function LiveData() {
 }
 
 const styles = StyleSheet.create({
+  scrollView: {
+    backgroundColor: '#fff',
+  },
   container: {
     flexGrow: 1,
     backgroundColor: '#fff',
@@ -463,6 +572,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#000',
     marginVertical: 12,
+  },
+  disabledButton: {
+    opacity: 0.45,
   },
   analyseButtonText: {
     color: '#fff',
