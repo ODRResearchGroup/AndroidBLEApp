@@ -1,7 +1,7 @@
 import RNFS from 'react-native-fs';
 import { zip } from 'react-native-zip-archive';
 import Share from 'react-native-share';
-import { listSensorRecords, listCaptures, SensorRecord, CaptureRow } from './db';
+import { listSensorRecords, listCaptures } from './db';
 
 const EXPORT_DIR = `${RNFS.DocumentDirectoryPath}/SmellwalkExports`;
 
@@ -34,14 +34,28 @@ export async function exportAllData(): Promise<void> {
     counts: { sensorRecords: sensorRecords.length, captures: captures.length },
     relationships: sensorRecords.map(sr => ({
       sensorRecordId: sr.id,
-      captureIds: captures.filter(c => c.sensorRecordId === sr.id).map(c => c.id),
+      captureIds: captures
+        .filter(c => c.sensorRecordId === sr.id)
+        .map(c => c.id),
     })),
   };
 
   await Promise.all([
-    RNFS.writeFile(`${stagingDir}/manifest.json`, JSON.stringify(manifest, null, 2), 'utf8'),
-    RNFS.writeFile(`${stagingDir}/sensor_records.json`, JSON.stringify(sensorRecords, null, 2), 'utf8'),
-    RNFS.writeFile(`${stagingDir}/captures.json`, JSON.stringify(captures, null, 2), 'utf8'),
+    RNFS.writeFile(
+      `${stagingDir}/manifest.json`,
+      JSON.stringify(manifest, null, 2),
+      'utf8',
+    ),
+    RNFS.writeFile(
+      `${stagingDir}/sensor_records.json`,
+      JSON.stringify(sensorRecords, null, 2),
+      'utf8',
+    ),
+    RNFS.writeFile(
+      `${stagingDir}/captures.json`,
+      JSON.stringify(captures, null, 2),
+      'utf8',
+    ),
   ]);
 
   const mediaDir = `${stagingDir}/media`;
@@ -55,8 +69,10 @@ export async function exportAllData(): Promise<void> {
         const ext = c.type === 'audio' ? 'm4a' : 'jpg';
         const dest = `${mediaDir}/${c.id}.${ext}`;
         const exists = await RNFS.exists(src);
-        if (exists) { await RNFS.copyFile(src, dest); }
-      })
+        if (exists) {
+          await RNFS.copyFile(src, dest);
+        }
+      }),
   );
 
   const zipPath = `${EXPORT_DIR}/smellwalk_${timestamp}.zip`;

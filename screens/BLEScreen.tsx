@@ -68,13 +68,18 @@ const BLELoggerApp = () => {
 
   const handleConnect = async () => {
     const selected = devices.find(d => d.id === selectedDeviceId);
-    if (!selected) {return Alert.alert('Device not found');}
+    if (!selected) {
+      return Alert.alert('Device not found');
+    }
 
     try {
       await connectToDevice(selected as Device);
       await enableNotifications(selected as Device, notificationSpecs);
       setSelectedDeviceId(null);
-      Alert.alert('Connected', `${selected.name || 'Device'} connected successfully.`);
+      Alert.alert(
+        'Connected',
+        `${selected.name || 'Device'} connected successfully.`,
+      );
     } catch (err: any) {
       console.error('Connect+notify error:', err);
       Alert.alert('Connection failed', err?.message || String(err));
@@ -110,20 +115,21 @@ const BLELoggerApp = () => {
                 </Text>
               </View>
             ) : (
-              devices.map((device) => {
+              devices.map(device => {
                 const isConnected = connectedDevice?.id === device.id;
                 const isSelected = selectedDeviceId === device.id;
 
                 return (
                   <Pressable
                     key={device.id}
-                    onPress={() => !isConnected && setSelectedDeviceId(device.id)}
+                    onPress={() =>
+                      !isConnected && setSelectedDeviceId(device.id)
+                    }
                     style={[
                       styles.deviceItem,
                       isSelected && styles.deviceItemSelected,
                     ]}
-                    disabled={isConnected}
-                  >
+                    disabled={isConnected}>
                     <Text style={styles.deviceName}>
                       {device.name || 'Unnamed Device'}
                     </Text>
@@ -131,8 +137,7 @@ const BLELoggerApp = () => {
                       style={[
                         styles.deviceStatus,
                         isConnected && styles.deviceStatusConnected,
-                      ]}
-                    >
+                      ]}>
                       {isConnected ? 'Connected' : 'Not connected'}
                     </Text>
                   </Pressable>
@@ -148,9 +153,6 @@ const BLELoggerApp = () => {
             <Text style={styles.connectButtonText}>Connect</Text>
           </Pressable>
         )}
-
-
-
       </ScrollView>
     </SafeAreaView>
   );

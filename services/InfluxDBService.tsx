@@ -6,12 +6,12 @@ import React, {
   useState,
   useCallback,
 } from 'react';
-import {PermissionsAndroid, Platform} from 'react-native';
-import Geolocation, {GeoPosition} from 'react-native-geolocation-service';
-import {InfluxDBClient} from '../influxdb';
-import {CONFIG} from '../config';
-import {eventEmitter} from '../BLEUniversal';
-import {BLEDataUpdated, SensorEvent} from '../types';
+import { PermissionsAndroid, Platform } from 'react-native';
+import Geolocation, { GeoPosition } from 'react-native-geolocation-service';
+import { InfluxDBClient } from '../influxdb';
+import { CONFIG } from '../config';
+import { eventEmitter } from '../BLEUniversal';
+import { BLEDataUpdated, SensorEvent } from '../types';
 
 export type LiveLocation = {
   latitude: number;
@@ -36,7 +36,11 @@ const InfluxDBContext = createContext<InfluxDBContextType | undefined>(
   undefined,
 );
 
-export const InfluxDBProvider = ({children}: {children: React.ReactNode}) => {
+export const InfluxDBProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   const [client, setClient] = useState<InfluxDBClient | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [location, setLocation] = useState<LiveLocation | null>(null);
@@ -284,8 +288,8 @@ export const InfluxDBProvider = ({children}: {children: React.ReactNode}) => {
       console.log('Testing InfluxDB connection...');
       await client.writeData(
         'test_measurement',
-        {source: 'debug_test'},
-        {test_value: 123.45}, // Direct number
+        { source: 'debug_test' },
+        { test_value: 123.45 }, // Direct number
         new Date(),
       );
       console.log('InfluxDB test successful!');

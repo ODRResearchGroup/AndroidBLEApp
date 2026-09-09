@@ -26,26 +26,38 @@ export function transcriptToPlainText(t: ProcessedTranscriptResponse): string {
 }
 
 export function deduplicateTranscript(text: string): string {
-  if (!text) { return text; }
+  if (!text) {
+    return text;
+  }
   const half = Math.floor(text.length / 2);
-  if (text.slice(0, half).trim() === text.slice(half).trim()) { return text.slice(0, half).trim(); }
+  if (text.slice(0, half).trim() === text.slice(half).trim()) {
+    return text.slice(0, half).trim();
+  }
   const phrases = text.split(/\s{2,}|\.\s+/);
-  return phrases.filter((p, i) => p.trim() !== phrases[i - 1]?.trim()).join('. ').replace(/\.\./g, '.');
+  return phrases
+    .filter((p, i) => p.trim() !== phrases[i - 1]?.trim())
+    .join('. ')
+    .replace(/\.\./g, '.');
 }
 
 export async function fetchProcessedTranscript(
-  recordingId: string
+  recordingId: string,
 ): Promise<ProcessedTranscriptResponse | null> {
   const baseUrl = Config.AZURE_FUNCTION_BASE_URL;
   const functionKey = Config.AZURE_PROCESSED_TRANSCRIPT_KEY;
-  if (!baseUrl || !functionKey) { throw new Error('Missing AZURE_PROCESSED_TRANSCRIPT_KEY'); }
+  if (!baseUrl || !functionKey) {
+    throw new Error('Missing AZURE_PROCESSED_TRANSCRIPT_KEY');
+  }
 
-  const url = `${baseUrl}/api/processed-transcript` +
+  const url =
+    `${baseUrl}/api/processed-transcript` +
     `?recordingId=${encodeURIComponent(recordingId)}` +
     `&code=${encodeURIComponent(functionKey)}`;
 
   const res = await fetch(url, { method: 'GET' });
-  if (res.status === 404) { return null; }
+  if (res.status === 404) {
+    return null;
+  }
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`processed-transcript failed: ${res.status} ${text}`);
@@ -60,7 +72,7 @@ export async function fetchProcessedTranscript(
 
   // Normalize Azure Speech API shape — keep channel 0 only to avoid stereo duplicates
   const recognizedPhrases: any[] = (blob?.recognizedPhrases ?? []).filter(
-    (p: any) => p.channel === 0 || p.channel == null
+    (p: any) => p.channel === 0 || p.channel == null,
   );
   return {
     schema: 'processed_transcript_v1',
@@ -77,9 +89,15 @@ export async function fetchProcessedTranscript(
 }
 
 function offsetToMs(raw: string | number | undefined): number {
-  if (!raw) { return 0; }
-  if (typeof raw === 'number') { return Math.round(raw / 10_000); }
+  if (!raw) {
+    return 0;
+  }
+  if (typeof raw === 'number') {
+    return Math.round(raw / 10_000);
+  }
   const m = String(raw).match(/PT(?:(\d+)M)?(?:([\d.]+)S)?/);
-  if (m) { return Math.round(((Number(m[1] ?? 0) * 60) + Number(m[2] ?? 0)) * 1000); }
+  if (m) {
+    return Math.round((Number(m[1] ?? 0) * 60 + Number(m[2] ?? 0)) * 1000);
+  }
   return 0;
 }

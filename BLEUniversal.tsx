@@ -1,20 +1,20 @@
-import React, {createContext, useContext, useEffect, useState} from 'react';
-import {BleManager, Device} from 'react-native-ble-plx';
-import {PermissionsAndroid, Platform} from 'react-native';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { BleManager, Device } from 'react-native-ble-plx';
+import { PermissionsAndroid, Platform } from 'react-native';
 import mitt from 'mitt';
-import {AppEventEmitter, BLEDataUpdated} from './types';
+import { AppEventEmitter, BLEDataUpdated } from './types';
 
 // Create a global event emitter instance
 const eventEmitter: AppEventEmitter = mitt();
 
 // Export the event emitter so other components can use it
-export {eventEmitter};
+export { eventEmitter };
 
 type BLEContextType = {
   manager: BleManager;
   devices: Device[];
   connectedDevice: Device | null;
-  characteristicValues: {[key: string]: number};
+  characteristicValues: { [key: string]: number };
   scanForDevices: () => void;
   connectToDevice: (device: Device) => Promise<void>;
   enableNotifications: (
@@ -30,7 +30,7 @@ type BLEContextType = {
 
 const BLEContext = createContext<BLEContextType | undefined>(undefined);
 
-export const BLEProvider = ({children}: {children: React.ReactNode}) => {
+export const BLEProvider = ({ children }: { children: React.ReactNode }) => {
   const [manager] = useState(() => new BleManager());
   const [devices, setDevices] = useState<Device[]>([]);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
@@ -76,7 +76,7 @@ export const BLEProvider = ({children}: {children: React.ReactNode}) => {
 
     manager.startDeviceScan(
       null,
-      {allowDuplicates: false, scanMode: 2},
+      { allowDuplicates: false, scanMode: 2 },
       (error, device) => {
         if (error) {
           console.error('Scan error:', error);
@@ -131,7 +131,7 @@ export const BLEProvider = ({children}: {children: React.ReactNode}) => {
       label: string;
     }[],
   ) => {
-    for (const {serviceUUID, characteristicUUID, label} of characteristics) {
+    for (const { serviceUUID, characteristicUUID, label } of characteristics) {
       console.log(
         'Enabling notification for',
         label,
@@ -165,13 +165,23 @@ export const BLEProvider = ({children}: {children: React.ReactNode}) => {
                 } else if (typeof Buffer !== 'undefined') {
                   const buf = Buffer.from(base64String, 'base64');
                   // create a Uint8Array view over the buffer
-                  bytes = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+                  bytes = new Uint8Array(
+                    buf.buffer,
+                    buf.byteOffset,
+                    buf.byteLength,
+                  );
                 } else {
-                  console.warn('No base64 decoder available in this environment');
+                  console.warn(
+                    'No base64 decoder available in this environment',
+                  );
                   return 0;
                 }
 
-                const view = new DataView(bytes.buffer, bytes.byteOffset || 0, bytes.byteLength);
+                const view = new DataView(
+                  bytes.buffer,
+                  bytes.byteOffset || 0,
+                  bytes.byteLength,
+                );
                 return view.getFloat32(0, true);
               } catch (err) {
                 console.error('Base64->float decode error:', err);

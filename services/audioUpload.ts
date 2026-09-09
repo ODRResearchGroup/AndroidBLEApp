@@ -5,9 +5,15 @@ import type { AudioTrackBundle } from './audioTrack';
 export type UploadAudioResult = { container: string; blobName: string };
 
 function pickAudioContentType(ext: string) {
-  if (ext === 'm4a') { return 'audio/mp4'; }
-  if (ext === 'aac') { return 'audio/aac'; }
-  if (ext === 'wav') { return 'audio/wav'; }
+  if (ext === 'm4a') {
+    return 'audio/mp4';
+  }
+  if (ext === 'aac') {
+    return 'audio/aac';
+  }
+  if (ext === 'wav') {
+    return 'audio/wav';
+  }
   return 'application/octet-stream';
 }
 
@@ -15,7 +21,11 @@ function normalizeFilePath(path: string) {
   return path.startsWith('file://') ? path.replace(/^file:\/\//, '') : path;
 }
 
-async function putBytesToSasUrl(sasUrl: string, bytes: Uint8Array, contentType: string) {
+async function putBytesToSasUrl(
+  sasUrl: string,
+  bytes: Uint8Array,
+  contentType: string,
+) {
   const res = await fetch(sasUrl, {
     method: 'PUT',
     headers: { 'x-ms-blob-type': 'BlockBlob', 'Content-Type': contentType },
@@ -31,7 +41,7 @@ export async function uploadAudioToAzure(
   localUri: string,
   sasUploadUrl: string,
   container: string,
-  blobName: string
+  blobName: string,
 ): Promise<UploadAudioResult> {
   const normalized = normalizeFilePath(localUri);
   if (!(await ReactNativeBlobUtil.fs.exists(normalized))) {
@@ -57,7 +67,7 @@ export async function uploadAudioTrackJsonToAzure(
   sasUploadUrl: string,
   container: string,
   blobName: string,
-  audioRef: { container: string; blobName: string }
+  audioRef: { container: string; blobName: string },
 ) {
   const payload = { ...track, audio: audioRef };
   const bytes = Uint8Array.from(Buffer.from(JSON.stringify(payload), 'utf8'));

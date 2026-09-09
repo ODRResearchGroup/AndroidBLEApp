@@ -10,19 +10,23 @@ export type PhotoUploadCompleteResponse = {
 export async function notifyPhotoUploadComplete(
   captureId: string,
   imageBlobName: string,
-  bundleBlobName: string
+  bundleBlobName: string,
 ): Promise<PhotoUploadCompleteResponse> {
   const baseUrl = Config.AZURE_FUNCTION_BASE_URL;
   const functionKey = Config.AZURE_PHOTO_UPLOAD_COMPLETE_KEY;
-  if (!baseUrl || !functionKey) { throw new Error('Missing AZURE_PHOTO_UPLOAD_COMPLETE_KEY'); }
+  if (!baseUrl || !functionKey) {
+    throw new Error('Missing AZURE_PHOTO_UPLOAD_COMPLETE_KEY');
+  }
 
   const res = await fetch(
-    `${baseUrl}/api/photo-upload-complete?code=${encodeURIComponent(functionKey)}`,
+    `${baseUrl}/api/photo-upload-complete?code=${encodeURIComponent(
+      functionKey,
+    )}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ captureId, imageBlobName, bundleBlobName }),
-    }
+    },
   );
   if (!res.ok) {
     const text = await res.text();

@@ -7,18 +7,23 @@ export type ProcessedStatusResponse = {
 };
 
 export async function fetchProcessedStatus(
-  recordingId: string
+  recordingId: string,
 ): Promise<ProcessedStatusResponse | null> {
   const baseUrl = Config.AZURE_FUNCTION_BASE_URL;
   const functionKey = Config.AZURE_PROCESSED_STATUS_KEY;
-  if (!baseUrl || !functionKey) { throw new Error('Missing AZURE_PROCESSED_STATUS_KEY'); }
+  if (!baseUrl || !functionKey) {
+    throw new Error('Missing AZURE_PROCESSED_STATUS_KEY');
+  }
 
-  const url = `${baseUrl}/api/processed-status` +
+  const url =
+    `${baseUrl}/api/processed-status` +
     `?recordingId=${encodeURIComponent(recordingId)}` +
     `&code=${encodeURIComponent(functionKey)}`;
 
   const res = await fetch(url, { method: 'GET' });
-  if (res.status === 404) { return null; }
+  if (res.status === 404) {
+    return null;
+  }
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`processed-status failed: ${res.status} ${text}`);
@@ -27,7 +32,10 @@ export async function fetchProcessedStatus(
   const json = await res.json();
   console.log('[processedStatus] raw response:', JSON.stringify(json));
   // Handle both flat { status: 'transcribed', ... } and nested { status: { ... } }
-  const inner = (typeof json?.status === 'object' && json.status !== null) ? json.status : json;
+  const inner =
+    typeof json?.status === 'object' && json.status !== null
+      ? json.status
+      : json;
   return {
     schema: inner.schema ?? '',
     recordingId: inner.recordingId ?? recordingId,

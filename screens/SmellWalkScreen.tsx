@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useState} from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   InteractionManager,
@@ -11,11 +11,11 @@ import {
   View,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
-import {useBLE} from '../BLEUniversal';
+import { useBLE } from '../BLEUniversal';
 import CustomRadarChart from '../components/CustomRadarChart';
 import FingerprintModal from '../components/FingerprintModal';
 import LiveLocationMap from '../components/LiveLocationMap';
-import {useInfluxDB} from '../services/InfluxDBService';
+import { useInfluxDB } from '../services/InfluxDBService';
 import {
   NavigationProp,
   useFocusEffect,
@@ -29,24 +29,24 @@ import {
   X,
 } from 'lucide-react-native';
 
-type SensorValue = {label: string; value: number};
+type SensorValue = { label: string; value: number };
 
 const mockSensorValues: SensorValue[] = [
-  {label: 'CH4', value: 0.62},
-  {label: 'NH3', value: 0.38},
-  {label: 'HCHO', value: 0.76},
-  {label: 'VOC', value: 0.54},
-  {label: 'Odour', value: 0.82},
-  {label: 'H2S', value: 0.29},
-  {label: 'Etoh', value: 0.68},
-  {label: 'NO2', value: 0.46},
+  { label: 'CH4', value: 0.62 },
+  { label: 'NH3', value: 0.38 },
+  { label: 'HCHO', value: 0.76 },
+  { label: 'VOC', value: 0.54 },
+  { label: 'Odour', value: 0.82 },
+  { label: 'H2S', value: 0.29 },
+  { label: 'Etoh', value: 0.68 },
+  { label: 'NO2', value: 0.46 },
 ];
 
 export default function SmellWalkScreen() {
-  const {characteristicValues, connectedDevice} = useBLE();
-  const {location, trail, isSmellWalkActive, startSmellWalk, stopSmellWalk} =
+  const { characteristicValues, connectedDevice } = useBLE();
+  const { location, trail, isSmellWalkActive, startSmellWalk, stopSmellWalk } =
     useInfluxDB();
-  const navigation = useNavigation<NavigationProp<{Device: undefined}>>();
+  const navigation = useNavigation<NavigationProp<{ Device: undefined }>>();
   const [mapVisible, setMapVisible] = useState(false);
   const [isConnected, setIsConnected] = useState(__DEV__);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
@@ -102,17 +102,17 @@ export default function SmellWalkScreen() {
     }
 
     return [
-      {label: 'CH4', value: characteristicValues.Methane || 0},
-      {label: 'NH3', value: characteristicValues.Ammonia || 0},
-      {label: 'HCHO', value: characteristicValues.Formaldehyde || 0},
+      { label: 'CH4', value: characteristicValues.Methane || 0 },
+      { label: 'NH3', value: characteristicValues.Ammonia || 0 },
+      { label: 'HCHO', value: characteristicValues.Formaldehyde || 0 },
       {
         label: 'VOC',
         value: characteristicValues['Voletile Organic Compounds'] || 0,
       },
-      {label: 'Odour', value: characteristicValues.Odor || 0},
-      {label: 'H2S', value: characteristicValues['Hydrogen Sulfide'] || 0},
-      {label: 'Etoh', value: characteristicValues.Ethanol || 0},
-      {label: 'NO2', value: characteristicValues['Nitrogen Dioxide'] || 0},
+      { label: 'Odour', value: characteristicValues.Odor || 0 },
+      { label: 'H2S', value: characteristicValues['Hydrogen Sulfide'] || 0 },
+      { label: 'Etoh', value: characteristicValues.Ethanol || 0 },
+      { label: 'NO2', value: characteristicValues['Nitrogen Dioxide'] || 0 },
     ];
   }, [characteristicValues]);
 
@@ -215,7 +215,7 @@ export default function SmellWalkScreen() {
                 ? handleStartWalk
                 : goToDeviceScreen
             }
-            style={({pressed}) => [
+            style={({ pressed }) => [
               styles.walkButton,
               isSmellWalkActive && styles.endButton,
               !isSmellWalkActive && !isConnected && styles.disabledButton,
@@ -255,8 +255,8 @@ export default function SmellWalkScreen() {
             accessibilityRole="button"
             accessibilityLabel="Create fingerprint"
             accessibilityHint="Opens the fingerprint annotation form"
-            accessibilityState={{disabled: !isConnected}}
-            style={({pressed}) => [
+            accessibilityState={{ disabled: !isConnected }}
+            style={({ pressed }) => [
               styles.actionButton,
               styles.annotationButton,
               !isConnected && styles.disabledButton,
@@ -313,8 +313,8 @@ export default function SmellWalkScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {flex: 1, backgroundColor: '#fff'},
-  mapPanel: {flex: 1, minHeight: 280, position: 'relative'},
+  screen: { flex: 1, backgroundColor: '#fff' },
+  mapPanel: { flex: 1, minHeight: 280, position: 'relative' },
   mapBadge: {
     position: 'absolute',
     top: 14,
@@ -324,17 +324,17 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: 'rgba(255,255,255,0.9)',
   },
-  mapBadgeText: {fontSize: 12, color: '#333 ', fontWeight: '600'},
-  contentScroll: {flexGrow: 0, flexShrink: 1},
-  content: {padding: 18, paddingBottom: 28},
+  mapBadgeText: { fontSize: 12, color: '#333 ', fontWeight: '600' },
+  contentScroll: { flexGrow: 0, flexShrink: 1 },
+  content: { padding: 18, paddingBottom: 28 },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  title: {fontSize: 24, fontWeight: '700', color: '#111'},
-  status: {fontSize: 13, color: '#666', marginTop: 4},
-  actions: {gap: 10, marginTop: 16},
+  title: { fontSize: 24, fontWeight: '700', color: '#111' },
+  status: { fontSize: 13, color: '#666', marginTop: 4 },
+  actions: { gap: 10, marginTop: 16 },
   walkButton: {
     minWidth: 135,
     height: 48,
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#111',
     borderRadius: 24,
   },
-  buttonPressed: {opacity: 0.65, transform: [{scale: 0.94}]},
+  buttonPressed: { opacity: 0.65, transform: [{ scale: 0.94 }] },
   actionButton: {
     flexDirection: 'row',
     gap: 9,
@@ -356,10 +356,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 13,
   },
-  endButton: {backgroundColor: '#b42318'},
-  annotationButton: {backgroundColor: '#2563eb'},
-  disabledButton: {opacity: 0.45},
-  buttonText: {color: '#fff', fontSize: 15, fontWeight: '600'},
+  endButton: { backgroundColor: '#b42318' },
+  annotationButton: { backgroundColor: '#2563eb' },
+  disabledButton: { opacity: 0.45 },
+  buttonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   connectionModalBackdrop: {
     flex: 1,
     alignItems: 'center',
@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111',
   },
-  connectionModalText: {marginTop: 10, color: '#555', lineHeight: 20},
+  connectionModalText: { marginTop: 10, color: '#555', lineHeight: 20 },
   connectionModalButton: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -398,13 +398,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#2563eb',
   },
-  sectionTitle: {fontSize: 17, fontWeight: '700', color: '#111', marginTop: 22},
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111',
+    marginTop: 22,
+  },
   plotCard: {
     marginTop: 10,
     alignItems: 'center',
   },
-  slider: {width: '100%', height: 36},
-  sensorGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8},
+  slider: { width: '100%', height: 36 },
+  sensorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   sensorCell: {
     width: '23%',
     minWidth: 72,
@@ -413,7 +418,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     alignItems: 'center',
   },
-  sensorLabel: {fontSize: 11, color: '#555', fontWeight: '600'},
-  sensorValue: {fontSize: 11, color: '#111', marginTop: 2},
-  locationText: {fontSize: 12, color: '#666', marginTop: 16},
+  sensorLabel: { fontSize: 11, color: '#555', fontWeight: '600' },
+  sensorValue: { fontSize: 11, color: '#111', marginTop: 2 },
+  locationText: { fontSize: 12, color: '#666', marginTop: 16 },
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Button, Alert } from 'react-native';
+import { View, Button, Alert, StyleSheet } from 'react-native';
 import Share from 'react-native-share';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DocumentDirectoryPath, writeFile } from 'react-native-fs';
@@ -18,12 +18,16 @@ import { DocumentDirectoryPath, writeFile } from 'react-native-fs';
 export async function exportFingerprints(share = true): Promise<string> {
   try {
     const keys = await AsyncStorage.getAllKeys();
-    const fingerprintKeys = keys.filter(k => k.startsWith('sensor_fingerprint_'));
+    const fingerprintKeys = keys.filter(k =>
+      k.startsWith('sensor_fingerprint_'),
+    );
     const pairs = await AsyncStorage.multiGet(fingerprintKeys);
 
     const parsed = pairs
       .map(([_, v]) => {
-        if (!v) return null;
+        if (!v) {
+          return null;
+        }
         try {
           return JSON.parse(v);
         } catch (e) {
@@ -65,10 +69,14 @@ const DataExport: React.FC = () => {
   };
 
   return (
-    <View style={{ padding: 8 }}>
+    <View style={styles.container}>
       <Button title="Export Data" onPress={onShare} />
     </View>
   );
 };
 
 export default DataExport;
+
+const styles = StyleSheet.create({
+  container: { padding: 8 },
+});

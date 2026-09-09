@@ -11,7 +11,9 @@ export async function notifyUploadComplete(
   }
 
   const res = await fetch(
-    `${BASE_URL}/api/upload-complete?code=${encodeURIComponent(UPLOAD_COMPLETE_KEY)}`,
+    `${BASE_URL}/api/upload-complete?code=${encodeURIComponent(
+      UPLOAD_COMPLETE_KEY,
+    )}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

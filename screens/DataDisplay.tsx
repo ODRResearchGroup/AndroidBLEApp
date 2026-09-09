@@ -1,13 +1,13 @@
 import React from 'react';
-import {View, Text, StyleSheet, Pressable, Image} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {NavigationProp} from '@react-navigation/native';
+import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NavigationProp } from '@react-navigation/native';
 
 interface DataDisplayProps {
   navigation: NavigationProp<any>;
 }
 
-export default function DataDisplay({navigation}: DataDisplayProps) {
+export default function DataDisplay({ navigation }: DataDisplayProps) {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.header}>What's for today???</Text>
@@ -81,7 +81,7 @@ const MARGIN = 20;
 const GUTTER = 16;
 
 const styles = StyleSheet.create({
-  container: {flex: 1, paddingHorizontal: MARGIN, paddingTop: 60},
+  container: { flex: 1, paddingHorizontal: MARGIN, paddingTop: 60 },
   header: {
     fontSize: 28,
     fontWeight: '600',
@@ -100,9 +100,14 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: '#000',
   },
-  cardContent: {flex: 1},
-  cardTitle: {fontSize: 18, fontWeight: '600', color: '#000', marginBottom: 8},
-  cardDescription: {fontSize: 14, color: '#666', lineHeight: 20},
+  cardContent: { flex: 1 },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+  },
+  cardDescription: { fontSize: 14, color: '#666', lineHeight: 20 },
   iconContainer: {
     width: 80,
     height: 80,
@@ -115,5 +120,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f5f0ff',
   },
-  annotationEmoji: {fontSize: 36},
+  annotationEmoji: { fontSize: 36 },
 });

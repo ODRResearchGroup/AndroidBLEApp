@@ -7,46 +7,48 @@ import ReactTestRenderer from 'react-test-renderer';
 
 jest.mock('react-native-gesture-handler', () => {
   return {
-    GestureHandlerRootView: ({children}: {children: React.ReactNode}) => children,
+    GestureHandlerRootView: ({ children }: { children: React.ReactNode }) =>
+      children,
   };
 });
 
 jest.mock('react-native-safe-area-context', () => {
   return {
-    SafeAreaProvider: ({children}: {children: React.ReactNode}) => children,
-    SafeAreaView: ({children}: {children: React.ReactNode}) => children,
+    SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
+    SafeAreaView: ({ children }: { children: React.ReactNode }) => children,
   };
 });
 
 jest.mock('@react-navigation/native', () => {
   return {
-    NavigationContainer: ({children}: {children: React.ReactNode}) => children,
+    NavigationContainer: ({ children }: { children: React.ReactNode }) =>
+      children,
   };
 });
 
 jest.mock('@react-navigation/bottom-tabs', () => ({
   createBottomTabNavigator: () => ({
-    Navigator: ({children}: {children: React.ReactNode}) => children,
+    Navigator: ({ children }: { children: React.ReactNode }) => children,
     Screen: () => null,
   }),
 }));
 
 jest.mock('@react-navigation/native-stack', () => ({
   createNativeStackNavigator: () => ({
-    Navigator: ({children}: {children: React.ReactNode}) => children,
+    Navigator: ({ children }: { children: React.ReactNode }) => children,
     Screen: () => null,
   }),
 }));
 
 jest.mock('../BLEUniversal', () => {
   return {
-    BLEProvider: ({children}: {children: React.ReactNode}) => children,
+    BLEProvider: ({ children }: { children: React.ReactNode }) => children,
   };
 });
 
 jest.mock('../components/BaselineContext', () => {
   return {
-    BaselineProvider: ({children}: {children: React.ReactNode}) => children,
+    BaselineProvider: ({ children }: { children: React.ReactNode }) => children,
   };
 });
 

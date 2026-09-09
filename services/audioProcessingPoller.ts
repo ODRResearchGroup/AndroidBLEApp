@@ -7,7 +7,10 @@ import {
   updateSensorRecordDescription,
 } from './db';
 import { fetchProcessedStatus } from './processedStatus';
-import { fetchProcessedTranscript, transcriptToPlainText } from './processedTranscript';
+import {
+  fetchProcessedTranscript,
+  transcriptToPlainText,
+} from './processedTranscript';
 import { fetchSuggestedDescriptors } from './suggestDescriptors';
 import { saveAnnotation } from './annotationService';
 import { notifyUploadComplete } from './uploadComplete';
@@ -15,19 +18,28 @@ import { notifyUploadComplete } from './uploadComplete';
 let running = false;
 
 export async function runAudioProcessingPoller(): Promise<void> {
-  if (running) { return; }
+  if (running) {
+    return;
+  }
   running = true;
   try {
     const pending = await listPendingAudioCaptures();
-    if (pending.length === 0) { return; }
+    if (pending.length === 0) {
+      return;
+    }
 
     for (const capture of pending) {
       try {
         const statusRes = await fetchProcessedStatus(capture.id);
         if (!statusRes) {
           // Upload completed but STT was never kicked off — retry
-          const audioExt = (capture.localPath?.split('.').pop()?.toLowerCase() ?? 'm4a') as 'm4a' | 'wav';
-          try { await notifyUploadComplete(capture.id, audioExt); } catch {}
+          const audioExt = (capture.localPath
+            ?.split('.')
+            .pop()
+            ?.toLowerCase() ?? 'm4a') as 'm4a' | 'wav';
+          try {
+            await notifyUploadComplete(capture.id, audioExt);
+          } catch {}
           continue;
         }
 
@@ -38,41 +50,53 @@ export async function runAudioProcessingPoller(): Promise<void> {
           let plainText = '';
           if (transcriptRes) {
             plainText = transcriptToPlainText(transcriptRes);
-            await updateCaptureTranscript(capture.id, JSON.stringify(transcriptRes));
+            await updateCaptureTranscript(
+              capture.id,
+              JSON.stringify(transcriptRes),
+            );
             await updateCaptureDescription(capture.id, plainText);
-          if (capture.sensorRecordId && plainText) {
-            await updateSensorRecordDescription(capture.sensorRecordId, plainText).catch(() => {});
-          }
+            if (capture.sensorRecordId && plainText) {
+              await updateSensorRecordDescription(
+                capture.sensorRecordId,
+                plainText,
+              ).catch(() => {});
+            }
           }
 
           let selectedTags: string[] = [];
           let suggestedTags: string[] = [];
           if (plainText) {
             try {
-              const tagRes = await fetchSuggestedDescriptors(plainText, capture.id);
+              const tagRes = await fetchSuggestedDescriptors(
+                plainText,
+                capture.id,
+              );
               suggestedTags = tagRes.suggestedDescriptors;
               await updateCaptureTags(capture.id, selectedTags, suggestedTags);
-            } catch (e) { console.warn('Tag suggestion failed (non-fatal):', e); }
+            } catch (e) {
+              console.warn('Tag suggestion failed (non-fatal):', e);
+            }
           }
 
-          const timestamp = new Date(capture.capturedAt)
-            .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          const timestamp = new Date(capture.capturedAt).toLocaleTimeString(
+            [],
+            { hour: '2-digit', minute: '2-digit', second: '2-digit' },
+          );
 
           await saveAnnotation({
-            recordingId:     capture.id,
-            sensorRecordId:  capture.sensorRecordId ?? undefined,
-            type:            'audio',
-            description:     plainText,
+            recordingId: capture.id,
+            sensorRecordId: capture.sensorRecordId ?? undefined,
+            type: 'audio',
+            description: plainText,
             selectedTags,
             timestamp,
-            latitude:        capture.latitudeDisplay  ?? '00.0000° N',
-            longitude:       capture.longitudeDisplay ?? '00.0000° E',
-            latitudeRaw:     capture.latitudeRaw      ?? undefined,
-            longitudeRaw:    capture.longitudeRaw     ?? undefined,
-            capturedAtMs:    capture.capturedAt,
-            annotationIndex: capture.annotationIndex  ?? 1,
+            latitude: capture.latitudeDisplay ?? '00.0000° N',
+            longitude: capture.longitudeDisplay ?? '00.0000° E',
+            latitudeRaw: capture.latitudeRaw ?? undefined,
+            longitudeRaw: capture.longitudeRaw ?? undefined,
+            capturedAtMs: capture.capturedAt,
+            annotationIndex: capture.annotationIndex ?? 1,
           });
-
         } else if (statusRes.status === 'failed') {
           await updateCaptureStatus(capture.id, 'failed');
         }
