@@ -94,9 +94,6 @@ const BLELoggerApp = () => {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>eNose Connection</Text>
-          <Text style={styles.subtitle}>
-            Connect to device under the{'\n'}name of Brian
-          </Text>
         </View>
 
         {/* Scan Button */}
@@ -116,34 +113,36 @@ const BLELoggerApp = () => {
                 </Text>
               </View>
             ) : (
-              devices.map(device => {
-                const isConnected = connectedDevice?.id === device.id;
-                const isSelected = selectedDeviceId === device.id;
+              devices
+                .filter(device => device.name?.startsWith('Brian'))
+                .map(device => {
+                  const isConnected = connectedDevice?.id === device.id;
+                  const isSelected = selectedDeviceId === device.id;
 
-                return (
-                  <Pressable
-                    key={device.id}
-                    onPress={() =>
-                      !isConnected && setSelectedDeviceId(device.id)
-                    }
-                    style={[
-                      styles.deviceItem,
-                      isSelected && styles.deviceItemSelected,
-                    ]}
-                    disabled={isConnected}>
-                    <Text style={styles.deviceName}>
-                      {device.name || 'Unnamed Device'}
-                    </Text>
-                    <Text
+                  return (
+                    <Pressable
+                      key={device.id}
+                      onPress={() =>
+                        !isConnected && setSelectedDeviceId(device.id)
+                      }
                       style={[
-                        styles.deviceStatus,
-                        isConnected && styles.deviceStatusConnected,
-                      ]}>
-                      {isConnected ? 'Connected' : 'Not connected'}
-                    </Text>
-                  </Pressable>
-                );
-              })
+                        styles.deviceItem,
+                        isSelected && styles.deviceItemSelected,
+                      ]}
+                      disabled={isConnected}>
+                      <Text style={styles.deviceName}>
+                        {device.name || 'Unnamed Device'}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.deviceStatus,
+                          isConnected && styles.deviceStatusConnected,
+                        ]}>
+                        {isConnected ? 'Connected' : 'Not connected'}
+                      </Text>
+                    </Pressable>
+                  );
+                })
             )}
           </View>
         </View>

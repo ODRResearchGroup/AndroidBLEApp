@@ -10,8 +10,6 @@ interface DataDisplayProps {
 export default function DataDisplay({ navigation }: DataDisplayProps) {
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>What's for today???</Text>
-
       <Pressable
         style={styles.card}
         onPress={() => navigation.navigate('LiveData')}>

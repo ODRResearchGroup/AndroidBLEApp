@@ -64,6 +64,7 @@ export default function LiveLocationMap({
     <View style={styles.container}>
       <MapView
         style={styles.map}
+        attributionEnabled={false}
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
         onDidFinishLoadingMap={() => {
           mapReadyRef.current = true;

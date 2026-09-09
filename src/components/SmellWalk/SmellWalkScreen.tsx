@@ -5,7 +5,6 @@ import {
   Modal,
   Pressable,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -183,9 +182,7 @@ export default function SmellWalkScreen() {
         )}
       </View>
 
-      <ScrollView
-        style={styles.contentScroll}
-        contentContainerStyle={styles.content}>
+      <View style={styles.content}>
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.title}>Smell Walk</Text>
@@ -267,7 +264,7 @@ export default function SmellWalkScreen() {
             <Text style={styles.buttonText}>Fingerprint</Text>
           </Pressable>
         </View>
-      </ScrollView>
+      </View>
 
       <FingerprintModal
         visible={showFingerprintModal}
@@ -312,7 +309,7 @@ export default function SmellWalkScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#fff' },
-  mapPanel: { flex: 1, minHeight: 280, position: 'relative' },
+  mapPanel: { flex: 1, position: 'relative' },
   mapBadge: {
     position: 'absolute',
     top: 14,
@@ -323,7 +320,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.9)',
   },
   mapBadgeText: { fontSize: 12, color: '#333 ', fontWeight: '600' },
-  contentScroll: { flexGrow: 0, flexShrink: 1 },
   content: { padding: 18, paddingBottom: 28 },
   headerRow: {
     flexDirection: 'row',
