@@ -24,10 +24,12 @@ export default function CameraCapture({
     if (!hasPermission) {
       requestPermission();
     }
-  }, []);
+  }, [hasPermission, requestPermission]);
 
   const takePhoto = async () => {
-    if (isCapturing || !cameraRef.current) return;
+    if (isCapturing || !cameraRef.current) {
+      return;
+    }
     try {
       setIsCapturing(true);
       const photo = await cameraRef.current.takePhoto({

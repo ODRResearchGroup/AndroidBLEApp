@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -98,33 +98,36 @@ export default function FingerprintModal({
   const sensorRecordIdRef = useRef<string>(uuidv4());
   const recordingIdRef = useRef<string | null>(null);
 
-  const createFingerprint = (): SensorEvent => ({
-    type: 'sensor_reading',
-    timestamp: new Date(),
-    source: 'BLE Device',
-    olfactoryData: {
-      readings: {
-        CH4: characteristicValues['Methane'] || 0,
-        NH3: characteristicValues['Ammonia'] || 0,
-        HCHO: characteristicValues['Formaldehyde'] || 0,
-        VOC: characteristicValues['Voletile Organic Compounds'] || 0,
-        Odour: characteristicValues['Odor'] || 0,
-        H2S: characteristicValues['Hydrogen Sulfide'] || 0,
-        Etoh: characteristicValues['Ethanol'] || 0,
-        NO2: characteristicValues['Nitrogen Dioxide'] || 0,
+  const createFingerprint = useCallback(
+    (): SensorEvent => ({
+      type: 'sensor_reading',
+      timestamp: new Date(),
+      source: 'BLE Device',
+      olfactoryData: {
+        readings: {
+          CH4: characteristicValues.Methane || 0,
+          NH3: characteristicValues.Ammonia || 0,
+          HCHO: characteristicValues.Formaldehyde || 0,
+          VOC: characteristicValues['Voletile Organic Compounds'] || 0,
+          Odour: characteristicValues.Odor || 0,
+          H2S: characteristicValues['Hydrogen Sulfide'] || 0,
+          Etoh: characteristicValues.Ethanol || 0,
+          NO2: characteristicValues['Nitrogen Dioxide'] || 0,
+        },
+        units: {
+          CH4: 'ppm',
+          NH3: 'ppm',
+          HCHO: 'ppm',
+          VOC: 'ppm',
+          Odour: 'a.u.',
+          H2S: 'ppm',
+          Etoh: 'ppm',
+          NO2: 'ppm',
+        },
       },
-      units: {
-        CH4: 'ppm',
-        NH3: 'ppm',
-        HCHO: 'ppm',
-        VOC: 'ppm',
-        Odour: 'a.u.',
-        H2S: 'ppm',
-        Etoh: 'ppm',
-        NO2: 'ppm',
-      },
-    },
-  });
+    }),
+    [characteristicValues],
+  );
 
   const handlePhotoTaken = async (tempPhotoPath: string) => {
     const permanentPath = `${DocumentDirectoryPath}/fingerprint_${Date.now()}.jpg`;
@@ -362,7 +365,7 @@ export default function FingerprintModal({
     if (visible && !capturedFingerprint) {
       setCapturedFingerprint(createFingerprint());
     }
-  }, [visible]);
+  }, [capturedFingerprint, createFingerprint, visible]);
 
   const isBusy = micPhase === 'uploading' || micPhase === 'processing';
   const statusLabel = MIC_LABEL[micPhase];
@@ -380,7 +383,7 @@ export default function FingerprintModal({
           onPhotoTaken={handlePhotoTaken}
         />
       ) : (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+        <SafeAreaView style={styles.modalContent}>
           <View style={styles.header}>
             <TouchableOpacity
               onPress={handleCancel}
@@ -738,6 +741,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
+  modalContent: { flex: 1, backgroundColor: '#fff' },
   slider: { width: '80%', height: 40, marginTop: 8 },
   sliderLabel: { fontSize: 12, color: '#666', marginTop: 2 },
 });

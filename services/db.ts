@@ -268,7 +268,7 @@ export async function getSensorRecord(
 }
 
 export async function deleteSensorRecords(ids: string[]): Promise<void> {
-  if (ids.length === 0) return;
+  if (ids.length === 0) {return;}
   const db = await getDb();
   const placeholders = ids.map(() => '?').join(',');
   await db.executeSql(

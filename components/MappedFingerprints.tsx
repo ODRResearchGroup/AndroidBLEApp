@@ -14,6 +14,20 @@ import { listSensorRecords, SensorRecord } from '../services/db';
 import ExpandedFingerprintView from './ExpandedFingerprintView';
 import { SavedFingerprintData } from './sharedTypes';
 
+const userPointStyle = {
+  circleColor: '#007aff',
+  circleRadius: 8,
+  circleStrokeWidth: 2,
+  circleStrokeColor: '#fff',
+};
+
+const fingerprintPointStyle = {
+  circleColor: '#ff7043',
+  circleRadius: 10,
+  circleStrokeWidth: 2,
+  circleStrokeColor: '#fff',
+};
+
 function recordToLegacy(record: SensorRecord): SavedFingerprintData {
   return {
     fingerprint: {
@@ -92,7 +106,7 @@ export default function MappedFingerprints() {
         });
       }
     }
-  }, [records]);
+  }, [location, records]);
 
   if (selectedRecord) {
     const tags = selectedRecord.tagsJson
@@ -165,15 +179,7 @@ export default function MappedFingerprints() {
                 },
               ],
             }}>
-            <CircleLayer
-              id="user-point"
-              style={{
-                circleColor: '#007aff',
-                circleRadius: 8,
-                circleStrokeWidth: 2,
-                circleStrokeColor: '#fff',
-              }}
-            />
+            <CircleLayer id="user-point" style={userPointStyle} />
           </ShapeSource>
         )}
 
@@ -182,7 +188,9 @@ export default function MappedFingerprints() {
           shape={features}
           onPress={(ev: any) => {
             const f = ev?.features?.[0] as Feature<Point> | undefined;
-            if (!f) return;
+            if (!f) {
+              return;
+            }
             const id = f.properties?.id as string;
             const record = records.find(r => r.id === id);
             if (record) {
@@ -191,15 +199,7 @@ export default function MappedFingerprints() {
               setSelectedRecord(record);
             }
           }}>
-          <CircleLayer
-            id="fingerprint-points"
-            style={{
-              circleColor: '#ff7043',
-              circleRadius: 10,
-              circleStrokeWidth: 2,
-              circleStrokeColor: '#fff',
-            }}
-          />
+          <CircleLayer id="fingerprint-points" style={fingerprintPointStyle} />
         </ShapeSource>
       </MapView>
 

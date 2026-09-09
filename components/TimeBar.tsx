@@ -7,8 +7,6 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 
-const { width } = Dimensions.get('window');
-
 interface TimedProgressBarProps {
   visible: boolean;
   onClose: () => void;
@@ -37,12 +35,14 @@ export default function TimedProgressBar({
 
       const timer = setTimeout(() => {
         onClose(); // hide progress bar
-        if (onComplete) onComplete(); // notify parent
+        if (onComplete) {
+          onComplete();
+        } // notify parent
       }, duration);
 
       return () => clearTimeout(timer);
     }
-  }, [visible]);
+  }, [duration, onClose, onComplete, progress, visible]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     width: progress.value * (screenWidth - 40), // use stored width

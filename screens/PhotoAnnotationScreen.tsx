@@ -63,9 +63,15 @@ function hslaToHex(hueDeg: number, alpha: number): string {
   const p = 0; // 2*l - q = 0
   const c = (t: number) => {
     let t2 = ((t % 1) + 1) % 1;
-    if (t2 < 1 / 6) return (q - p) * 6 * t2;
-    if (t2 < 1 / 2) return q;
-    if (t2 < 2 / 3) return p + (q - p) * (2 / 3 - t2) * 6;
+    if (t2 < 1 / 6) {
+      return (q - p) * 6 * t2;
+    }
+    if (t2 < 1 / 2) {
+      return q;
+    }
+    if (t2 < 2 / 3) {
+      return p + (q - p) * (2 / 3 - t2) * 6;
+    }
     return p;
   };
   const r = Math.round(c(h + 1 / 3) * 255);
@@ -188,7 +194,7 @@ const HUE_STOPS = [
 const HueTrack = () => (
   <View style={styles.hueTrack}>
     {HUE_STOPS.slice(0, -1).map((c, i) => (
-      <View key={i} style={{ flex: 1, backgroundColor: c }} />
+      <View key={i} style={[styles.hueStop, { backgroundColor: c }]} />
     ))}
   </View>
 );
@@ -206,16 +212,7 @@ const OpacityTrack = ({ hue }: { hue: number }) => (
 const WidthTrack = () => (
   <View style={styles.widthTrack}>
     {Array.from({ length: 20 }).map((_, i) => (
-      <View
-        key={i}
-        style={{
-          flex: 1,
-          height: 1 + i * 0.5,
-          backgroundColor: C.darkGray,
-          borderRadius: 1,
-          alignSelf: 'center',
-        }}
-      />
+      <View key={i} style={[styles.widthStop, { height: 1 + i * 0.5 }]} />
     ))}
   </View>
 );
@@ -708,6 +705,13 @@ export default function PhotoAnnotationScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  hueStop: { flex: 1 },
+  widthStop: {
+    flex: 1,
+    backgroundColor: C.darkGray,
+    borderRadius: 1,
+    alignSelf: 'center',
+  },
   safe: { flex: 1, backgroundColor: C.white },
   scrollContent: { padding: 16, paddingBottom: 32 },
   card: {

@@ -10,7 +10,6 @@ import {
   Platform,
   UIManager,
   TouchableOpacity,
-  ActivityIndicator,
   TextInput,
   Alert,
   Modal,
@@ -28,6 +27,13 @@ import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import CustomRadarChart from './CustomRadarChart';
 
 const { width } = Dimensions.get('window');
+
+const locationPointStyle = {
+  circleColor: '#ff7043',
+  circleRadius: 8,
+  circleStrokeWidth: 2,
+  circleStrokeColor: '#fff',
+};
 
 import { SavedFingerprintData, SensorReadings } from './sharedTypes';
 import { updateSensorRecord, insertCapture } from '../services/db';
@@ -114,7 +120,9 @@ export default function ExpandedFingerprintView({
   useEffect(
     () => () => {
       clearPoll();
-      if (tagTimerRef.current) clearTimeout(tagTimerRef.current);
+      if (tagTimerRef.current) {
+        clearTimeout(tagTimerRef.current);
+      }
     },
     [],
   );
@@ -127,7 +135,9 @@ export default function ExpandedFingerprintView({
   };
 
   const refreshTags = useCallback(async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim()) {
+      return;
+    }
     try {
       const res = await fetchSuggestedDescriptors(text);
       setSelectedTags(res.suggestedDescriptors.slice(0, 6));
@@ -138,7 +148,9 @@ export default function ExpandedFingerprintView({
   const handleDescriptionChange = useCallback(
     (text: string) => {
       setDescription(text);
-      if (tagTimerRef.current) clearTimeout(tagTimerRef.current);
+      if (tagTimerRef.current) {
+        clearTimeout(tagTimerRef.current);
+      }
       tagTimerRef.current = setTimeout(() => refreshTags(text), 1200);
     },
     [refreshTags],
@@ -635,15 +647,7 @@ export default function ExpandedFingerprintView({
                       },
                     ],
                   }}>
-                  <CircleLayer
-                    id="location-point"
-                    style={{
-                      circleColor: '#ff7043',
-                      circleRadius: 8,
-                      circleStrokeWidth: 2,
-                      circleStrokeColor: '#fff',
-                    }}
-                  />
+                  <CircleLayer id="location-point" style={locationPointStyle} />
                 </ShapeSource>
               </MapView>
             </View>

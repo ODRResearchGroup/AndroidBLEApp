@@ -1,12 +1,7 @@
 import RNFS from 'react-native-fs';
 import { zip } from 'react-native-zip-archive';
 import Share from 'react-native-share';
-import {
-  listSensorRecords,
-  listCaptures,
-  SensorRecord,
-  CaptureRow,
-} from './db';
+import { listSensorRecords, listCaptures } from './db';
 
 const EXPORT_DIR = `${RNFS.DocumentDirectoryPath}/SmellwalkExports`;
 

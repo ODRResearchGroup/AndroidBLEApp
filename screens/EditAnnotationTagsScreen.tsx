@@ -68,7 +68,7 @@ function tagColor(tag: string): TagColor {
   ];
   let hash = 0;
   for (let i = 0; i < tag.length; i++) {
-    hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    hash = tag.charCodeAt(i) + hash * 31;
   }
   return colors[Math.abs(hash) % colors.length];
 }

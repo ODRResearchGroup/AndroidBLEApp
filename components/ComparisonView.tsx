@@ -57,7 +57,7 @@ export default function ComparisonView({
         : {};
 
     if (!Object.keys(maybeReadings).length) {
-      return SENSOR_MAP.map(({ key, label }) => ({ x: label, y: 0.01 }));
+      return SENSOR_MAP.map(({ label }) => ({ x: label, y: 0.01 }));
     }
 
     return SENSOR_MAP.map(({ key, label }) => ({
@@ -77,11 +77,12 @@ export default function ComparisonView({
   const exportSelected = async () => {
     try {
       const selected = selectedItems.map(i => i.data);
-      if (selected.length === 0)
+      if (selected.length === 0) {
         return Alert.alert(
           'No selection',
           'Please select fingerprints to export.',
         );
+      }
 
       const filename = `fingerprints_selected_${Date.now()}.json`;
       const path = `${DocumentDirectoryPath}/${filename}`;

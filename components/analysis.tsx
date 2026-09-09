@@ -94,9 +94,15 @@ export default function Analysis() {
   const moveSelection = (key: string, direction: 'up' | 'down') => {
     setSelectedKeys(prev => {
       const idx = prev.indexOf(key);
-      if (idx === -1) return prev;
-      if (direction === 'up' && idx === 0) return prev;
-      if (direction === 'down' && idx === prev.length - 1) return prev;
+      if (idx === -1) {
+        return prev;
+      }
+      if (direction === 'up' && idx === 0) {
+        return prev;
+      }
+      if (direction === 'down' && idx === prev.length - 1) {
+        return prev;
+      }
 
       const newKeys = [...prev];
       const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
@@ -144,7 +150,7 @@ export default function Analysis() {
       <Text style={styles.note}>Select fingerprints to compare.</Text>
       <Text style={styles.badge}>Selected: {selectedKeys.length}</Text>
 
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+      <View style={styles.actionRow}>
         <Button
           title="Clear"
           onPress={clearSelection}
@@ -159,7 +165,7 @@ export default function Analysis() {
       </View>
 
       {showComparison && selectedKeys.length >= 2 && (
-        <View style={{ marginVertical: 12, alignItems: 'center' }}>
+        <View style={styles.comparisonContainer}>
           <CustomRadarChart
             data={radarChartData}
             size={320}
@@ -168,7 +174,7 @@ export default function Analysis() {
           />
           {/* Legend */}
           <View style={styles.legend}>
-            {radarChartData.map((dataset, idx) => (
+            {radarChartData.map(dataset => (
               <View key={dataset.key} style={styles.legendItem}>
                 <View
                   style={[
@@ -192,8 +198,8 @@ export default function Analysis() {
       )}
 
       <ScrollView
-        style={{ marginTop: 8 }}
-        contentContainerStyle={{ paddingBottom: 120 }}>
+        style={styles.itemsList}
+        contentContainerStyle={styles.itemsContent}>
         {items.map((item, idx) => {
           const isSelected = selectedKeys.includes(item.key);
           const selectionIndex = selectedKeys.indexOf(item.key);
@@ -203,13 +209,8 @@ export default function Analysis() {
               <Pressable
                 onPress={() => toggleSelect(item.key)}
                 style={[styles.item, isSelected && styles.selectedItem]}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}>
-                  <View style={{ flex: 1 }}>
+                <View style={styles.itemRow}>
+                  <View style={styles.itemContent}>
                     {isSelected && (
                       <View
                         style={[
@@ -363,4 +364,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
+  actionRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  comparisonContainer: { marginVertical: 12, alignItems: 'center' },
+  itemsList: { marginTop: 8 },
+  itemsContent: { paddingBottom: 120 },
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  itemContent: { flex: 1 },
 });

@@ -67,7 +67,7 @@ function tagColor(tag: string): TagColor {
   ];
   let hash = 0;
   for (let i = 0; i < tag.length; i++) {
-    hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    hash = tag.charCodeAt(i) + hash * 31;
   }
   return colors[Math.abs(hash) % colors.length];
 }
@@ -444,7 +444,7 @@ export default function AnnotationFeed({ navigation }: Props) {
             </View>
           ))
         )}
-        <View style={{ height: 100 }} />
+        <View style={styles.bottomSpacer} />
       </ScrollView>
 
       <FAB onPress={() => navigation.navigate('AddAnnotation', {})} />
@@ -453,6 +453,7 @@ export default function AnnotationFeed({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  bottomSpacer: { height: 100 },
   safe: { flex: 1, backgroundColor: C.white },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },

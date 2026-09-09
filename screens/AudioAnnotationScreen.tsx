@@ -28,7 +28,7 @@ import {
   uploadAudioTrackJsonToAzure,
 } from '../services/audioUpload';
 import { notifyUploadComplete } from '../services/uploadComplete';
-import { insertCapture, updateCaptureTags, enqueueSync } from '../services/db';
+import { insertCapture, enqueueSync } from '../services/db';
 import { fetchSuggestedDescriptors } from '../services/suggestDescriptors';
 import { saveAnnotation } from '../services/annotationService';
 import { usePressAnimation } from '../services/usePressAnimation';
