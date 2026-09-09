@@ -27,6 +27,7 @@ export interface SensorEvent {
   type: 'sensor_reading';
   timestamp: Date;
   source: string;
+  deviceId?: string;
   olfactoryData?: {
     readings: Record<string, number>;
     units: Record<string, string>;

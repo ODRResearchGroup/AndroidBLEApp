@@ -51,18 +51,17 @@ export const InfluxDBProvider = ({
   const isSmellWalkActiveRef = useRef(false);
   const walkIdRef = useRef<string | null>(null);
   const walkReadingsRef = useRef<Record<string, number>>({});
-  const walkSourceRef = useRef('unknown');
+  const walkDeviceIdRef = useRef('unknown');
   const walkTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Initialize InfluxDB client
   useEffect(() => {
     const token = CONFIG.INFLUX_TOKEN || '';
     const url = CONFIG.INFLUX_URL || '';
-    const org = CONFIG.INFLUX_ORG || '';
-    const bucket = CONFIG.INFLUX_BUCKET || '';
+    const database = CONFIG.INFLUX_DATABASE || '';
 
-    if (token && url && org && bucket) {
-      const influxClient = new InfluxDBClient(url, token, org, bucket);
+    if (token && url && database) {
+      const influxClient = new InfluxDBClient(url, token, database);
       setClient(influxClient);
       setIsConnected(true);
       console.log('InfluxDB client initialized successfully');
@@ -139,7 +138,7 @@ export const InfluxDBProvider = ({
 
   const flushWalkData = useCallback(async () => {
     const currentWalkId = walkIdRef.current;
-    const readings = walkReadingsRef.current;
+    const readings = { ...walkReadingsRef.current };
     if (!currentWalkId || Object.keys(readings).length === 0) {
       return;
     }
@@ -150,6 +149,8 @@ export const InfluxDBProvider = ({
       );
       return;
     }
+
+    walkReadingsRef.current = {};
 
     const fields: Record<string, number> = {};
     for (const [sensorType, value] of Object.entries(readings)) {
@@ -171,14 +172,17 @@ export const InfluxDBProvider = ({
         'smell_walk_readings',
         {
           walk_id: currentWalkId,
-          device_id: walkSourceRef.current,
+          device_id: walkDeviceIdRef.current,
         },
         fields,
         new Date(),
       );
-      walkReadingsRef.current = {};
       console.log(`Sent smell walk sample ${currentWalkId}`);
     } catch (error) {
+      walkReadingsRef.current = {
+        ...readings,
+        ...walkReadingsRef.current,
+      };
       console.error('Error sending smell walk data to InfluxDB:', error);
     }
   }, [client]);
@@ -191,6 +195,7 @@ export const InfluxDBProvider = ({
     const nextWalkId = `walk-${Date.now()}`;
     walkIdRef.current = nextWalkId;
     walkReadingsRef.current = {};
+    walkDeviceIdRef.current = 'unknown';
     isSmellWalkActiveRef.current = true;
     setWalkId(nextWalkId);
     setTrail(latestLocationRef.current ? [latestLocationRef.current] : []);
@@ -241,6 +246,7 @@ export const InfluxDBProvider = ({
         type: 'sensor_reading',
         timestamp: event.timestamp,
         source: event.source,
+        deviceId: event.deviceId,
         olfactoryData: {
           readings: {
             [event.characteristicUUID]:
@@ -263,7 +269,7 @@ export const InfluxDBProvider = ({
         return;
       }
 
-      walkSourceRef.current = event.source || 'unknown';
+      walkDeviceIdRef.current = event.deviceId || event.source || 'unknown';
       Object.assign(walkReadingsRef.current, event.olfactoryData.readings);
     };
 

@@ -30,6 +30,15 @@ jobs:
       - name: Install JavaScript dependencies
         run: npm ci
 
+      - name: Create React Native environment
+        env:
+          INFLUX_URL: ${{ secrets.INFLUX_URL }}
+          INFLUX_TOKEN: ${{ secrets.INFLUX_TOKEN }}
+          INFLUX_DATABASE: ${{ secrets.INFLUX_DATABASE }}
+        run: |
+          printf 'INFLUX_URL=%s\nINFLUX_TOKEN=%s\nINFLUX_DATABASE=%s\n' \
+            "$INFLUX_URL" "$INFLUX_TOKEN" "$INFLUX_DATABASE" > .env
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
