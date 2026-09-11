@@ -180,6 +180,7 @@ export const InfluxDBProvider = ({
         ...walkReadingsRef.current,
       };
       console.error('Error storing smell walk data locally:', error);
+      throw error;
     }
   }, []);
 

@@ -138,7 +138,8 @@ export default function SmellWalkScreen() {
     try {
       const completedWalkId = await stopSmellWalk();
       if (completedWalkId) {
-        await exportSmellWalkCsv(completedWalkId);
+        const savedPath = await exportSmellWalkCsv(completedWalkId);
+        Alert.alert('Smell walk saved', `CSV saved to:\n${savedPath}`);
       }
     } catch (error) {
       Alert.alert('Could not save smell walk', String(error));

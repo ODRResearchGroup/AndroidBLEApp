@@ -1,4 +1,6 @@
 import RNFS from 'react-native-fs';
+import { Platform } from 'react-native';
+import ReactNativeBlobUtil from 'react-native-blob-util';
 import { zip } from 'react-native-zip-archive';
 import Share from 'react-native-share';
 import {
@@ -101,7 +103,7 @@ function csvValue(value: string | number | null | undefined): string {
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-export async function exportSmellWalkCsv(walkId: string): Promise<void> {
+export async function exportSmellWalkCsv(walkId: string): Promise<string> {
   const records = await listSensorRecordsByWalkId(walkId);
   const headers = [
     'walk_id',
@@ -141,10 +143,19 @@ export async function exportSmellWalkCsv(walkId: string): Promise<void> {
     ),
   ];
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const csvPath = `${EXPORT_DIR}/smellwalk_${walkId}_${timestamp}.csv`;
+  const fileName = `smellwalk_${walkId}_${timestamp}.csv`;
+  const csvPath = `${EXPORT_DIR}/${fileName}`;
 
   await RNFS.mkdir(EXPORT_DIR);
   await RNFS.writeFile(csvPath, `\ufeff${lines.join('\n')}\n`, 'utf8');
+  if (Platform.OS === 'android') {
+    return ReactNativeBlobUtil.MediaCollection.copyToMediaStore(
+      { name: fileName, parentFolder: 'SmellWalk', mimeType: 'text/csv' },
+      'Download',
+      csvPath,
+    );
+  }
+
   await Share.open({
     title: 'Save Smell Walk CSV',
     url: `file://${csvPath}`,
@@ -152,4 +163,5 @@ export async function exportSmellWalkCsv(walkId: string): Promise<void> {
     saveToFiles: true,
     failOnCancel: false,
   });
+  return csvPath;
 }
