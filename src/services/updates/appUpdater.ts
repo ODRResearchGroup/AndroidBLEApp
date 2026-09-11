@@ -60,7 +60,7 @@ async function installUpdate(release: ReleaseInfo): Promise<void> {
 export async function checkAndPromptForAppUpdate(): Promise<void> {
   try {
     const release = await checkForAppUpdate();
-    if (!release) {
+    if (!release || __DEV__) {
       return;
     }
 

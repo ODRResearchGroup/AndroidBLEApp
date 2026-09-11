@@ -15,6 +15,7 @@ export type SensorRecord = {
   recordedAt: number; // Unix ms
   latitude: number | null;
   longitude: number | null;
+  accuracyM?: number | null;
   ch4: number;
   nh3: number;
   hcho: number;
@@ -109,6 +110,7 @@ async function getDb(): Promise<SQLite.SQLiteDatabase> {
         recordedAt    INTEGER NOT NULL,
         latitude      REAL,
         longitude     REAL,
+        accuracy_m    REAL,
         ch4           REAL NOT NULL DEFAULT 0,
         nh3           REAL NOT NULL DEFAULT 0,
         hcho          REAL NOT NULL DEFAULT 0,
@@ -177,6 +179,11 @@ async function getDb(): Promise<SQLite.SQLiteDatabase> {
         'ALTER TABLE sensor_records ADD COLUMN photo_path TEXT;',
       );
     } catch {}
+    try {
+      await db.executeSql(
+        'ALTER TABLE sensor_records ADD COLUMN accuracy_m REAL;',
+      );
+    } catch {}
 
     await db.executeSql(`
       CREATE TABLE IF NOT EXISTS sync_queue (
@@ -205,12 +212,12 @@ export async function insertSensorRecord(
   const db = await getDb();
   await db.executeSql(
     `INSERT OR REPLACE INTO sensor_records (
-      id, title, description, photo_path, recordedAt, latitude, longitude,
+      id, title, description, photo_path, recordedAt, latitude, longitude, accuracy_m,
       ch4, nh3, hcho, voc, odour, h2s, etoh, no2,
       delta_ch4, delta_nh3, delta_hcho, delta_voc,
       delta_odour, delta_h2s, delta_etoh, delta_no2,
       sync_status, synced_at
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',NULL);`,
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',NULL);`,
     [
       row.id,
       row.title,
@@ -219,6 +226,7 @@ export async function insertSensorRecord(
       row.recordedAt,
       row.latitude ?? null,
       row.longitude ?? null,
+      row.accuracyM ?? null,
       row.ch4,
       row.nh3,
       row.hcho,
@@ -249,6 +257,21 @@ export async function listSensorRecords(limit = 100): Promise<SensorRecord[]> {
   for (let i = 0; i < res.rows.length; i++) {
     const r = res.rows.item(i);
     rows.push(mapSensorRecord(r));
+  }
+  return rows;
+}
+
+export async function listSensorRecordsByWalkId(
+  walkId: string,
+): Promise<SensorRecord[]> {
+  const db = await getDb();
+  const [res] = await db.executeSql(
+    'SELECT * FROM sensor_records WHERE title = ? ORDER BY recordedAt ASC;',
+    [walkId],
+  );
+  const rows: SensorRecord[] = [];
+  for (let i = 0; i < res.rows.length; i++) {
+    rows.push(mapSensorRecord(res.rows.item(i)));
   }
   return rows;
 }
@@ -317,6 +340,7 @@ function mapSensorRecord(r: any): SensorRecord {
     recordedAt: r.recordedAt,
     latitude: r.latitude ?? null,
     longitude: r.longitude ?? null,
+    accuracyM: r.accuracy_m ?? null,
     ch4: r.ch4,
     nh3: r.nh3,
     hcho: r.hcho,

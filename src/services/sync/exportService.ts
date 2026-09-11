@@ -1,7 +1,11 @@
 import RNFS from 'react-native-fs';
 import { zip } from 'react-native-zip-archive';
 import Share from 'react-native-share';
-import { listSensorRecords, listCaptures } from '../database/db';
+import {
+  listCaptures,
+  listSensorRecords,
+  listSensorRecordsByWalkId,
+} from '../database/db';
 
 const EXPORT_DIR = `${RNFS.DocumentDirectoryPath}/SmellwalkExports`;
 
@@ -84,6 +88,67 @@ export async function exportAllData(): Promise<void> {
     title: 'Export Smellwalk Data',
     url: `file://${zipPath}`,
     type: 'application/zip',
+    saveToFiles: true,
+    failOnCancel: false,
+  });
+}
+
+function csvValue(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  const text = String(value);
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+export async function exportSmellWalkCsv(walkId: string): Promise<void> {
+  const records = await listSensorRecordsByWalkId(walkId);
+  const headers = [
+    'walk_id',
+    'recorded_at',
+    'latitude',
+    'longitude',
+    'accuracy_m',
+    'ch4',
+    'nh3',
+    'hcho',
+    'voc',
+    'odour',
+    'h2s',
+    'etoh',
+    'no2',
+  ];
+  const lines = [
+    headers.join(','),
+    ...records.map(record =>
+      [
+        walkId,
+        new Date(record.recordedAt).toISOString(),
+        record.latitude,
+        record.longitude,
+        record.accuracyM,
+        record.ch4,
+        record.nh3,
+        record.hcho,
+        record.voc,
+        record.odour,
+        record.h2s,
+        record.etoh,
+        record.no2,
+      ]
+        .map(csvValue)
+        .join(','),
+    ),
+  ];
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const csvPath = `${EXPORT_DIR}/smellwalk_${walkId}_${timestamp}.csv`;
+
+  await RNFS.mkdir(EXPORT_DIR);
+  await RNFS.writeFile(csvPath, `\ufeff${lines.join('\n')}\n`, 'utf8');
+  await Share.open({
+    title: 'Save Smell Walk CSV',
+    url: `file://${csvPath}`,
+    type: 'text/csv',
     saveToFiles: true,
     failOnCancel: false,
   });

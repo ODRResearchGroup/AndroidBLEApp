@@ -15,6 +15,7 @@ import CustomRadarChart from '../common/CustomRadarChart';
 import FingerprintModal from '../common/FingerprintModal';
 import LiveLocationMap from '../common/LiveLocationMap';
 import { useInfluxDB } from '../../services/influx/InfluxDBService';
+import { exportSmellWalkCsv } from '../../services/sync/exportService';
 import {
   NavigationProp,
   useFocusEffect,
@@ -133,10 +134,15 @@ export default function SmellWalkScreen() {
     [sensorValues],
   );
 
-  const handleStopWalk = () => {
-    stopSmellWalk().catch(error => {
-      Alert.alert('Could not end smell walk', String(error));
-    });
+  const handleStopWalk = async () => {
+    try {
+      const completedWalkId = await stopSmellWalk();
+      if (completedWalkId) {
+        await exportSmellWalkCsv(completedWalkId);
+      }
+    } catch (error) {
+      Alert.alert('Could not save smell walk', String(error));
+    }
   };
 
   const requireConnectedDevice = async () => {
